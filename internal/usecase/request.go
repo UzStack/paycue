@@ -10,12 +10,20 @@ import (
 	"go.uber.org/zap"
 )
 
-func WebhookRequest(url string, data map[string]any, log *zap.Logger, retry int) error {
+func WebhookRequest(url string, apiKey string, data map[string]any, log *zap.Logger, retry int) error {
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	response, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	// Client webhook haqiqiyligini shu header orqali tekshiradi.
+	req.Header.Set("X-API-Key", apiKey)
+
+	response, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -27,7 +35,7 @@ func WebhookRequest(url string, data map[string]any, log *zap.Logger, retry int)
 		if retry < 3 {
 			time.Sleep(5 * time.Second)
 			log.Info("retry webhook", zap.Int("retry", retry))
-			return WebhookRequest(url, data, log, retry+1)
+			return WebhookRequest(url, apiKey, data, log, retry+1)
 		}
 		return errors.New("failed send webhook " + response.Status)
 	}

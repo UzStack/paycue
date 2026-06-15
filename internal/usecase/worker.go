@@ -32,7 +32,7 @@ func CloseTransactionWorker(ctx context.Context, db *sql.DB, log *zap.Logger, cf
 			}
 			for _, transaction := range transactions {
 				webhookStatus := true
-				err := WebhookRequest(cfg.WebhookURL, map[string]any{
+				err := WebhookRequest(cfg.WebhookURL, cfg.APIKey, map[string]any{
 					"action":         "cancel",
 					"amount":         transaction["amount"],
 					"transaction_id": transaction["transaction_id"],
@@ -63,7 +63,7 @@ func Worker(ctx context.Context, tasks <-chan domain.Task, log *zap.Logger, cfg 
 			}
 			payload := task.Paylod().(domain.WebhookTask)
 			webhookStatus := true
-			if err := WebhookRequest(cfg.WebhookURL, map[string]any{
+			if err := WebhookRequest(cfg.WebhookURL, cfg.APIKey, map[string]any{
 				"action":         "confirm",
 				"amount":         payload.Amount,
 				"transaction_id": payload.TransID,

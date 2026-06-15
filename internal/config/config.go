@@ -12,6 +12,7 @@ type Config struct {
 	Port       string
 	WatchID    int64
 	Limit      int64
+	APIKey     string
 }
 
 func NewConfig() (*Config, error) {
@@ -42,12 +43,18 @@ func NewConfig() (*Config, error) {
 		return nil, err
 	}
 
+	apiKey, err := Getenv("API_KEY", "", true)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		Workers:    workers,
 		WebhookURL: GetenvValue("WEBHOOK_URL", ""),
 		Port:       GetenvValue("PORT", "8080"),
 		WatchID:    watchID,
 		Limit:      limit,
+		APIKey:     apiKey,
 	}, nil
 }
 

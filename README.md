@@ -66,9 +66,13 @@ WATCH_ID=856254490
 PORT=10800
 DEBUG=true
 LIMIT=100
+API_KEY=<api_key>
 ```
 
 > Eslatma: .env fayildagi `WEBHOOK_URL` juda muhum to’lov bajarilgandan keyin shu callback urlga malumotlarni yuboradi qaysi transaction bajarilganligi haqida
+> 
+
+> Eslatma: `API_KEY` — transaction yaratish endpointini himoyalaydigan maxfiy kalit. Har bir so’rovda `X-API-Key` header orqali yuboriladi va dastur webhook yuborganda ham shu kalitni `X-API-Key` headerda qaytaradi. Uzun va tasodifiy qiymat qo’ying (masalan `openssl rand -hex 32`).
 > 
 
 ### Botni sozlash
@@ -131,12 +135,14 @@ Request example
 ```bash
 curl --request POST \
   --url http://<host>:10800/create/transaction/ \
-  --header 'authorization: Basic OHFhS2ZhS3AyU19JZGZyNUlaU3dqeTFtSFFnYTpWMFl5VFZUMXkyQkRJUWVnVFdLYTI3bUtFU29h' \
+  --header 'X-API-Key: <api_key>' \
   --header 'content-type: application/json' \
   --data '{
   "amount": 20000
 }'
 ```
+
+> Diqqat: `/create/transaction/` endpointi `API_KEY` bilan himoyalangan. Har bir so’rovda `.env` dagi `API_KEY` qiymatini `X-API-Key` headerda yuborishingiz shart, aks holda `401 Unauthorized` qaytadi.
 
 Post data
 
@@ -166,9 +172,22 @@ Error response misol
 }
 ```
 
+`X-API-Key` xato yoki yuborilmagan bo’lsa `401` response misol
+
+```json
+{
+  "status": false,
+  "data": {
+    "detail": "Invalid or missing X-API-Key"
+  }
+}
+```
+
 ### Webhook
 
 To’lov bajarilganda yoki bekor qilinganda dastur siz kiritgan callback urlga malumotlarni yuboradi. Ikkita asosiy  action mavjud cancel va confirm
+
+Dastur webhook so’rovini yuborganda `.env` dagi `API_KEY` qiymatini `X-API-Key` headerda yuboradi. Callback urlingizda shu headerni o’zingizdagi kalit bilan solishtirib, so’rov haqiqatan paycue’dan kelganini tekshiring — mos kelmasa so’rovni rad eting.
 
 ```json
 # to'lov bajarilganda
