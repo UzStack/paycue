@@ -17,7 +17,6 @@ Loyiha nomi paycue to’lovlarni avtomatlashtirish uchun open source dastur. Bu 
 2. Humo telegram bot
 3. Humo plastik kartasi
 4. Server
-5. Redis
 
 `Nega Telegram account va humo kerak?` chunki dastur Humoning rasmiy botidan malumot olib ishlaydi. Humo kartaga pul tushganda humo telegram bot orqali xabar yuboradi dastur esa buni olib qayta ishlaydi.
 
@@ -59,7 +58,6 @@ APP_ID=<app_id>
 APP_HASH=<app_hash>
 TG_PHONE=<you_phone_number>
 SESSION_DIR="sessions"
-REDIS_ADDR=127.0.0.1:6379
 WORKERS=10
 WEBHOOK_URL=http://127.0.0.1:10800/health/
 WATCH_ID=856254490
