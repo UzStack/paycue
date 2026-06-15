@@ -1,4 +1,4 @@
-module github.com/JscorpTech/paymento
+module github.com/UzStack/paycue
 
 go 1.24.0
 

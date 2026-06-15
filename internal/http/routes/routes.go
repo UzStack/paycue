@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/JscorpTech/paymento/internal/config"
-	"github.com/JscorpTech/paymento/internal/domain"
-	"github.com/JscorpTech/paymento/internal/http/handlers"
+	"github.com/UzStack/paycue/internal/config"
+	"github.com/UzStack/paycue/internal/domain"
+	"github.com/UzStack/paycue/internal/http/handlers"
 	"go.uber.org/zap"
 )
 

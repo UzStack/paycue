@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/JscorpTech/paymento/internal/domain"
-	"github.com/JscorpTech/paymento/internal/repository"
-	"github.com/JscorpTech/paymento/internal/usecase"
+	"github.com/UzStack/paycue/internal/domain"
+	"github.com/UzStack/paycue/internal/repository"
+	"github.com/UzStack/paycue/internal/usecase"
 	"github.com/gotd/td/examples"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"

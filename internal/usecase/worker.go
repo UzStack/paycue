@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/JscorpTech/paymento/internal/config"
-	"github.com/JscorpTech/paymento/internal/domain"
-	"github.com/JscorpTech/paymento/internal/repository"
+	"github.com/UzStack/paycue/internal/config"
+	"github.com/UzStack/paycue/internal/domain"
+	"github.com/UzStack/paycue/internal/repository"
 	"go.uber.org/zap"
 )
 
