@@ -66,9 +66,108 @@ make build          # bin/paycue va bin/paycue-cli
 ./bin/paycue        # serverni ishga tushirish
 ```
 
-## API
+## API integratsiya
 
-Barcha himoyalangan endpointlar `Authorization: Bearer <token>` headerini talab qiladi.
+Bu — dasturchi boshqaradigan to'liq API. `paycue-cli` ham aynan shu
+endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
+
+**Asoslar**
+- Base URL: `http://<host>:<PORT>` (default port `8080`)
+- Format: so'rov va javob — JSON (`Content-Type: application/json`)
+- Auth: `POST /api/register` va `GET /health/` dan tashqari hammasi
+  `Authorization: Bearer <token>` (yoki `X-API-Key: <token>`) talab qiladi
+- Javob qobig'i: `{ "status": bool, "data": object }`. Xatoda
+  `status=false` va `data.detail` matn bo'ladi (HTTP kodi: 400/401/403/404/5xx)
+
+### Endpointlar jadvali
+
+| Metod | Path | Auth | CLI ekvivalenti |
+| --- | --- | --- | --- |
+| `GET`  | `/health/` | ✗ | — |
+| `POST` | `/api/register` | ✗ | `register` |
+| `POST` | `/api/webhook` | ✓ | `webhook` |
+| `POST` | `/api/telegram/send-code` | ✓ | `telegram send-code` |
+| `POST` | `/api/telegram/verify` | ✓ | `telegram verify` |
+| `GET`  | `/api/telegram` | ✓ | `telegram list` |
+| `POST` | `/api/cards` | ✓ | `card add` |
+| `GET`  | `/api/cards` | ✓ | `card list` |
+| `POST` | `/api/transactions` | ✓ | `transaction create` |
+
+### So'rov/javob maydonlari
+
+**`POST /api/register`** — ro'yxatdan o'tish, doimiy token oladi.
+
+| Maydon | Tur | Majburiy | Izoh |
+| --- | --- | --- | --- |
+| `name` | string | ✓ | ism familiya |
+| `email` | string | shartli | `email` yoki `phone` dan kamida bittasi |
+| `phone` | string | shartli | — |
+
+Javob: `{ "id": int, "name": string, "token": string }`
+
+**`POST /api/webhook`** — webhook URL sozlash.
+
+| Maydon | Tur | Majburiy |
+| --- | --- | --- |
+| `url` | string | ✓ |
+
+Javob: `{ "url": string, "secret": string }` — `secret` keyin webhookda `X-API-Key` sifatida keladi.
+
+**`POST /api/telegram/send-code`** — Telegram account ulashni boshlaydi (SMS kod yuboradi).
+
+| Maydon | Tur | Majburiy |
+| --- | --- | --- |
+| `phone` | string | ✓ |
+
+Javob: `{ "telegram_account_id": int, "message": string }`
+
+**`POST /api/telegram/verify`** — kodni (kerak bo'lsa 2FA parolni) tasdiqlaydi.
+
+| Maydon | Tur | Majburiy |
+| --- | --- | --- |
+| `telegram_account_id` | int | ✓ |
+| `code` | string | ✓ |
+| `password` | string | 2FA yoqilgan bo'lsa |
+
+Javob: 2FA kerak bo'lsa `{ "need_password": true }`; aks holda `{ "telegram_account_id": int, "status": "active" }`.
+
+**`GET /api/telegram`** — accountlar ro'yxati. Javob: `TelegramAccount[]`.
+
+**`POST /api/cards`** — carta qo'shish.
+
+| Maydon | Tur | Majburiy | Izoh |
+| --- | --- | --- | --- |
+| `telegram_account_id` | int | ✓ | siznikilardan biri |
+| `last4` | string | ✓ | aniq 4 raqam (`7159`) |
+| `label` | string | ✗ | ixtiyoriy nom |
+
+Javob: `Card` obyekti.
+
+**`GET /api/cards`** — cartalar ro'yxati. Javob: `Card[]`.
+
+**`POST /api/transactions`** — to'lov uchun band bo'lmagan summa oladi.
+
+| Maydon | Tur | Majburiy | Izoh |
+| --- | --- | --- | --- |
+| `card_id` | int | ✓ | siznikilardan biri |
+| `amount` | int | ✓ | so'ralayotgan summa (musbat) |
+
+Javob: `{ "amount": int, "card_id": int, "transaction_id": string }` — `amount` band bo'lmagan summa (carta bo'yicha increment qilingan).
+
+### Obyekt sxemalari
+
+```jsonc
+// TelegramAccount
+{ "id": 1, "user_id": 1, "phone": "+99890...", "tg_user_id": 123, "username": "ali", "status": "active", "created_at": "..." }
+// status: "pending" (kod kutilmoqda) | "active" (ulangan)
+
+// Card
+{ "id": 1, "telegram_account_id": 1, "last4": "7159", "label": "Asosiy", "created_at": "..." }
+```
+
+---
+
+Quyida har bir endpoint uchun `curl` misollari.
 
 ### Ro'yxatdan o'tish (public)
 
