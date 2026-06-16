@@ -24,6 +24,7 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 		return middleware.Auth(db, next)
 	}
 
+	mux.HandleFunc("GET /api/webhook", auth(h.GetWebhook))
 	mux.HandleFunc("POST /api/webhook", auth(h.SetWebhook))
 
 	mux.HandleFunc("POST /api/telegram/send-code", auth(h.TelegramSendCode))

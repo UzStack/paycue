@@ -98,7 +98,8 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `GET`  | `/health/` | ✗ | — |
 | `POST` | `/api/register` | ✗ | `register` |
 | `POST` | `/api/login` | ✗ | `login` |
-| `POST` | `/api/webhook` | ✓ | `webhook` |
+| `GET`  | `/api/webhook` | ✓ | `webhook` (urlsiz) |
+| `POST` | `/api/webhook` | ✓ | `webhook --url` |
 | `POST` | `/api/telegram/send-code` | ✓ | `telegram send-code` |
 | `POST` | `/api/telegram/verify` | ✓ | `telegram verify` |
 | `GET`  | `/api/telegram` | ✓ | `telegram list` |
@@ -271,7 +272,8 @@ aks holda dastur `3 marta` qayta urinadi.
 ## CLI
 
 `paycue-cli` ni **argumentsiz** ishga tushirsangiz interaktiv menu (TUI) ochiladi —
-hamma narsani menyudan tanlab boshqarasiz:
+menyularni **strelka (↑/↓) bilan** tanlab, Enter bilan tasdiqlaysiz (parol `*` bilan
+yashiriladi):
 
 ```bash
 paycue-cli            # interaktiv menu
@@ -282,7 +284,8 @@ Yoki to'g'ridan-to'g'ri buyruqlar bilan:
 ```bash
 paycue-cli register --name "Ism" --email pochta@example.com --password "parol123"
 paycue-cli login --login pochta@example.com --password "parol123"   # boshqa qurilmada token olish
-paycue-cli webhook --url https://example.com/hook
+paycue-cli webhook                              # joriy webhookni ko'rish
+paycue-cli webhook --url https://example.com/hook   # webhook sozlash
 paycue-cli telegram send-code --phone +99890...
 paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
 paycue-cli telegram list

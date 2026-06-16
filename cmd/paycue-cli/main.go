@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.1.0"
+const VERSION = "2.2.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -377,9 +377,15 @@ func (a *app) saveTokenFromResponse(out map[string]any, profName string) {
 
 func cmdWebhook(c *client, args []string) error {
 	fs := flag.NewFlagSet("webhook", flag.ExitOnError)
-	url := fs.String("url", "", "webhook url")
+	url := fs.String("url", "", "webhook url (bo'sh bo'lsa joriysini ko'rsatadi)")
 	fs.Parse(args)
-	out, err := c.do("POST", "/api/webhook", map[string]any{"url": *url})
+	var out map[string]any
+	var err error
+	if *url == "" {
+		out, err = c.do("GET", "/api/webhook", nil) // joriy webhookni ko'rish
+	} else {
+		out, err = c.do("POST", "/api/webhook", map[string]any{"url": *url})
+	}
 	if err != nil {
 		return err
 	}

@@ -1,79 +1,60 @@
 package main
 
 import (
-	"bufio"
+	"errors"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
-	"strings"
+
+	"github.com/manifoldco/promptui"
 )
 
-var stdin = bufio.NewReader(os.Stdin)
-
-func prompt(label string) string {
-	fmt.Printf("%s: ", label)
-	line, _ := stdin.ReadString('\n')
-	return strings.TrimSpace(line)
+// selectMenu strelka (↑/↓) bilan tanlanadigan menu. Tanlangan indeks qaytadi.
+// Ctrl-C yoki ESC bo'lsa ok=false.
+func selectMenu(label string, items []string) (int, bool) {
+	s := promptui.Select{
+		Label: label,
+		Items: items,
+		Size:  len(items),
+	}
+	i, _, err := s.Run()
+	if err != nil {
+		return 0, false
+	}
+	return i, true
 }
 
-func promptDefault(label, def string) string {
-	v := prompt(fmt.Sprintf("%s [%s]", label, def))
-	if v == "" {
-		return def
+func ask(label string) string {
+	v, err := (&promptui.Prompt{Label: label}).Run()
+	if err != nil {
+		return ""
 	}
 	return v
 }
 
-func pause() {
-	fmt.Print("\nDavom etish uchun Enter...")
-	stdin.ReadString('\n')
+func askRequired(label string) (string, bool) {
+	p := promptui.Prompt{
+		Label: label,
+		Validate: func(s string) error {
+			if s == "" {
+				return errors.New("bo'sh bo'lmasin")
+			}
+			return nil
+		},
+	}
+	v, err := p.Run()
+	if err != nil {
+		return "", false
+	}
+	return v, true
 }
 
-func header(a *app) {
-	fmt.Println("\n==================== paycue-cli ====================")
-	tok := "yo'q"
-	if a.c.token != "" {
-		tok = "bor"
+func askPassword(label string) string {
+	v, err := (&promptui.Prompt{Label: label, Mask: '*'}).Run()
+	if err != nil {
+		return ""
 	}
-	fmt.Printf("Profil: %s | API: %s | token: %s\n", a.profileName, a.c.api, tok)
-	fmt.Println("----------------------------------------------------")
-}
-
-// runTUI interaktiv menyu.
-func runTUI(a *app) {
-	for {
-		header(a)
-		fmt.Println(`1) Ro'yxatdan o'tish (register)
-2) Kirish (login)
-3) Profillar
-4) Webhook sozlash
-5) Telegram accountlar
-6) Cartalar
-7) Transaction yaratish
-0) Chiqish`)
-		switch prompt("Tanlang") {
-		case "1":
-			tuiRegister(a)
-		case "2":
-			tuiLogin(a)
-		case "3":
-			tuiProfiles(a)
-		case "4":
-			tuiWebhook(a)
-		case "5":
-			tuiTelegram(a)
-		case "6":
-			tuiCards(a)
-		case "7":
-			tuiTransaction(a)
-		case "0", "q", "exit":
-			fmt.Println("Xayr!")
-			return
-		default:
-			fmt.Println("Noma'lum tanlov.")
-		}
-	}
+	return v
 }
 
 func show(out map[string]any, err error) {
@@ -85,12 +66,61 @@ func show(out map[string]any, err error) {
 	printJSON(out["data"])
 }
 
+// runTUI strelka bilan boshqariladigan interaktiv menu.
+func runTUI(a *app) {
+	for {
+		tok := "yo'q"
+		if a.c.token != "" {
+			tok = "bor"
+		}
+		label := fmt.Sprintf("paycue-cli  (profil: %s | token: %s)", a.profileName, tok)
+		idx, ok := selectMenu(label, []string{
+			"Ro'yxatdan o'tish (register)",
+			"Kirish (login)",
+			"Profillar",
+			"Webhook",
+			"Telegram accountlar",
+			"Cartalar",
+			"Transaction yaratish",
+			"Chiqish",
+		})
+		if !ok {
+			return
+		}
+		switch idx {
+		case 0:
+			tuiRegister(a)
+		case 1:
+			tuiLogin(a)
+		case 2:
+			tuiProfiles(a)
+		case 3:
+			tuiWebhook(a)
+		case 4:
+			tuiTelegram(a)
+		case 5:
+			tuiCards(a)
+		case 6:
+			tuiTransaction(a)
+		case 7:
+			fmt.Println("Xayr!")
+			return
+		}
+	}
+}
+
 func tuiRegister(a *app) {
-	name := prompt("Ism familiya")
-	email := prompt("Email (ixtiyoriy)")
-	phone := prompt("Telefon (ixtiyoriy)")
-	password := prompt("Parol (kamida 6 belgi)")
-	profName := promptDefault("Saqlanadigan profil nomi", "default")
+	name, ok := askRequired("Ism familiya")
+	if !ok {
+		return
+	}
+	email := ask("Email (ixtiyoriy)")
+	phone := ask("Telefon (ixtiyoriy)")
+	password := askPassword("Parol (kamida 6 belgi)")
+	profName := ask("Saqlanadigan profil nomi (bo'sh=default)")
+	if profName == "" {
+		profName = "default"
+	}
 	out, err := a.c.do("POST", "/api/register", map[string]any{
 		"name": name, "email": email, "phone": phone, "password": password,
 	})
@@ -99,33 +129,34 @@ func tuiRegister(a *app) {
 		a.useProfile(a.cfg.Current)
 	}
 	show(out, err)
-	pause()
 }
 
 func tuiLogin(a *app) {
-	login := prompt("Email yoki telefon")
-	password := prompt("Parol")
-	profName := promptDefault("Saqlanadigan profil nomi", "default")
+	login, ok := askRequired("Email yoki telefon")
+	if !ok {
+		return
+	}
+	password := askPassword("Parol")
+	profName := ask("Saqlanadigan profil nomi (bo'sh=default)")
+	if profName == "" {
+		profName = "default"
+	}
 	out, err := a.c.do("POST", "/api/login", map[string]any{"login": login, "password": password})
 	if err == nil {
 		a.saveTokenFromResponse(out, profName)
 		a.useProfile(a.cfg.Current)
 	}
 	show(out, err)
-	pause()
 }
 
 func tuiProfiles(a *app) {
 	for {
-		fmt.Println("\n--- Profillar ---")
 		names := make([]string, 0, len(a.cfg.Profiles))
 		for n := range a.cfg.Profiles {
 			names = append(names, n)
 		}
 		sort.Strings(names)
-		if len(names) == 0 {
-			fmt.Println("(profillar yo'q)")
-		}
+		fmt.Println("\n--- Profillar (joriy: " + a.cfg.Current + ") ---")
 		for _, n := range names {
 			marker := "  "
 			if n == a.cfg.Current {
@@ -133,25 +164,38 @@ func tuiProfiles(a *app) {
 			}
 			fmt.Printf("%s%s\t%s\n", marker, n, a.cfg.Profiles[n].API)
 		}
-		fmt.Println("\n1) Profilga o'tish   2) Profil qo'shish   3) Profil o'chirish   0) Orqaga")
-		switch prompt("Tanlang") {
-		case "1":
-			name := prompt("Profil nomi")
-			if _, ok := a.cfg.Profiles[name]; !ok {
-				fmt.Println("Profil topilmadi.")
+		idx, ok := selectMenu("Profillar", []string{
+			"Profilga o'tish", "Profil qo'shish", "Profil o'chirish", "Orqaga",
+		})
+		if !ok {
+			return
+		}
+		switch idx {
+		case 0:
+			if len(names) == 0 {
+				fmt.Println("Profillar yo'q.")
 				break
 			}
-			a.cfg.Current = name
-			saveConfig(a.cfg)
-			a.useProfile(name)
-			fmt.Println("Joriy profil:", name)
-		case "2":
-			name := prompt("Profil nomi")
-			token := prompt("Token")
-			api := promptDefault("API manzili", defaultAPIAddr)
-			if name == "" || token == "" {
-				fmt.Println("nom va token majburiy.")
+			i, ok := selectMenu("Qaysi profilga o'tamiz?", names)
+			if !ok {
 				break
+			}
+			a.cfg.Current = names[i]
+			saveConfig(a.cfg)
+			a.useProfile(names[i])
+			fmt.Println("Joriy profil:", names[i])
+		case 1:
+			name, ok := askRequired("Profil nomi")
+			if !ok {
+				break
+			}
+			token, ok := askRequired("Token")
+			if !ok {
+				break
+			}
+			api := ask("API manzili (bo'sh=" + defaultAPIAddr + ")")
+			if api == "" {
+				api = defaultAPIAddr
 			}
 			a.cfg.Profiles[name] = profile{API: api, Token: token}
 			if a.cfg.Current == "" {
@@ -159,12 +203,15 @@ func tuiProfiles(a *app) {
 			}
 			saveConfig(a.cfg)
 			fmt.Println("Saqlandi:", name)
-		case "3":
-			name := prompt("O'chiriladigan profil nomi")
-			if _, ok := a.cfg.Profiles[name]; !ok {
-				fmt.Println("Profil topilmadi.")
+		case 2:
+			if len(names) == 0 {
 				break
 			}
+			i, ok := selectMenu("Qaysi profilni o'chiramiz?", names)
+			if !ok {
+				break
+			}
+			name := names[i]
 			delete(a.cfg.Profiles, name)
 			if a.cfg.Current == name {
 				a.cfg.Current = ""
@@ -175,46 +222,65 @@ func tuiProfiles(a *app) {
 			}
 			saveConfig(a.cfg)
 			fmt.Println("O'chirildi:", name)
-		case "0", "":
+		case 3:
 			return
 		}
 	}
 }
 
 func tuiWebhook(a *app) {
-	url := prompt("Webhook URL")
-	out, err := a.c.do("POST", "/api/webhook", map[string]any{"url": url})
-	show(out, err)
-	pause()
+	idx, ok := selectMenu("Webhook", []string{"Joriy webhookni ko'rish", "Webhook sozlash", "Orqaga"})
+	if !ok {
+		return
+	}
+	switch idx {
+	case 0:
+		out, err := a.c.do("GET", "/api/webhook", nil)
+		show(out, err)
+	case 1:
+		url, ok := askRequired("Webhook URL")
+		if !ok {
+			return
+		}
+		out, err := a.c.do("POST", "/api/webhook", map[string]any{"url": url})
+		show(out, err)
+	}
 }
 
 func tuiTelegram(a *app) {
 	for {
-		fmt.Println("\n--- Telegram accountlar ---")
-		fmt.Println("1) Account ulash (kod yuborish)   2) Kodni tasdiqlash   3) Ro'yxat   0) Orqaga")
-		switch prompt("Tanlang") {
-		case "1":
-			phone := prompt("Telefon raqami (+998...)")
+		idx, ok := selectMenu("Telegram accountlar", []string{
+			"Ro'yxatni ko'rish", "Account ulash (kod yuborish)", "Kodni tasdiqlash", "Orqaga",
+		})
+		if !ok {
+			return
+		}
+		switch idx {
+		case 0:
+			out, err := a.c.do("GET", "/api/telegram", nil)
+			show(out, err)
+		case 1:
+			phone, ok := askRequired("Telefon raqami (+998...)")
+			if !ok {
+				break
+			}
 			out, err := a.c.do("POST", "/api/telegram/send-code", map[string]any{"phone": phone})
 			show(out, err)
 			if err == nil {
-				fmt.Println("\nKod Telegramga yuborildi. '2' bilan tasdiqlang.")
+				fmt.Println("Kod Telegramga yuborildi. 'Kodni tasdiqlash' bilan davom eting.")
 			}
-			pause()
-		case "2":
-			id, _ := strconv.ParseInt(prompt("telegram_account_id"), 10, 64)
-			code := prompt("Tasdiqlash kodi")
-			password := prompt("2FA paroli (bo'lmasa bo'sh qoldiring)")
+		case 2:
+			id, _ := strconv.ParseInt(ask("telegram_account_id"), 10, 64)
+			code, ok := askRequired("Tasdiqlash kodi")
+			if !ok {
+				break
+			}
+			password := askPassword("2FA paroli (bo'lmasa bo'sh qoldiring)")
 			out, err := a.c.do("POST", "/api/telegram/verify", map[string]any{
 				"telegram_account_id": id, "code": code, "password": password,
 			})
 			show(out, err)
-			pause()
-		case "3":
-			out, err := a.c.do("GET", "/api/telegram", nil)
-			show(out, err)
-			pause()
-		case "0", "":
+		case 3:
 			return
 		}
 	}
@@ -222,32 +288,38 @@ func tuiTelegram(a *app) {
 
 func tuiCards(a *app) {
 	for {
-		fmt.Println("\n--- Cartalar ---")
-		fmt.Println("1) Carta qo'shish   2) Ro'yxat   0) Orqaga")
-		switch prompt("Tanlang") {
-		case "1":
-			id, _ := strconv.ParseInt(prompt("telegram_account_id"), 10, 64)
-			last4 := prompt("Oxirgi 4 raqam")
-			label := prompt("Nom (ixtiyoriy)")
+		idx, ok := selectMenu("Cartalar", []string{"Ro'yxatni ko'rish", "Carta qo'shish", "Orqaga"})
+		if !ok {
+			return
+		}
+		switch idx {
+		case 0:
+			out, err := a.c.do("GET", "/api/cards", nil)
+			show(out, err)
+		case 1:
+			id, _ := strconv.ParseInt(ask("telegram_account_id"), 10, 64)
+			last4, ok := askRequired("Oxirgi 4 raqam")
+			if !ok {
+				break
+			}
+			label := ask("Nom (ixtiyoriy)")
 			out, err := a.c.do("POST", "/api/cards", map[string]any{
 				"telegram_account_id": id, "last4": last4, "label": label,
 			})
 			show(out, err)
-			pause()
-		case "2":
-			out, err := a.c.do("GET", "/api/cards", nil)
-			show(out, err)
-			pause()
-		case "0", "":
+		case 2:
 			return
 		}
 	}
 }
 
 func tuiTransaction(a *app) {
-	card, _ := strconv.ParseInt(prompt("card_id"), 10, 64)
-	amount, _ := strconv.ParseInt(prompt("Summa (amount)"), 10, 64)
+	card, _ := strconv.ParseInt(ask("card_id"), 10, 64)
+	amountStr, ok := askRequired("Summa (amount)")
+	if !ok {
+		return
+	}
+	amount, _ := strconv.ParseInt(amountStr, 10, 64)
 	out, err := a.c.do("POST", "/api/transactions", map[string]any{"card_id": card, "amount": amount})
 	show(out, err)
-	pause()
 }

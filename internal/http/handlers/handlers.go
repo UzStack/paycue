@@ -122,7 +122,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ok(w, map[string]any{"token": token})
 }
 
-// ---- Webhook sozlash ----
+// ---- Webhook ----
+
+// GetWebhook joriy webhook URL va secretini qaytaradi.
+func (h *Handler) GetWebhook(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	url, secret, err := repository.GetWebhook(h.DB, user.ID)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{"url": url, "secret": secret})
+}
 
 func (h *Handler) SetWebhook(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFrom(r)
