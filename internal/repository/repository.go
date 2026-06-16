@@ -218,6 +218,21 @@ func GetCard(db *sql.DB, id int64) (*domain.Card, error) {
 	return &c, nil
 }
 
+// DeleteCard cartani va uning transactionlarini o'chiradi.
+func DeleteCard(db *sql.DB, cardID int64) error {
+	db.Exec("DELETE FROM transactions WHERE card_id=?", cardID)
+	_, err := db.Exec("DELETE FROM cards WHERE id=?", cardID)
+	return err
+}
+
+// DeleteTelegramAccount accountni, uning cartalarini va ularning transactionlarini o'chiradi.
+func DeleteTelegramAccount(db *sql.DB, accountID int64) error {
+	db.Exec("DELETE FROM transactions WHERE card_id IN (SELECT id FROM cards WHERE telegram_account_id=?)", accountID)
+	db.Exec("DELETE FROM cards WHERE telegram_account_id=?", accountID)
+	_, err := db.Exec("DELETE FROM telegram_accounts WHERE id=?", accountID)
+	return err
+}
+
 // CardOwner cartaning egasi (user_id) ni tekshirish uchun.
 func CardOwner(db *sql.DB, cardID int64) (int64, error) {
 	var userID int64

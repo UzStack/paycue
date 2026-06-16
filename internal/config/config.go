@@ -16,6 +16,7 @@ type Config struct {
 	TimeoutMins int
 	Debug       bool
 	CORSOrigin  string
+	WebDir      string
 }
 
 func NewConfig() (*Config, error) {
@@ -61,6 +62,7 @@ func NewConfig() (*Config, error) {
 		TimeoutMins: timeout,
 		Debug:       os.Getenv("DEBUG") == "true",
 		CORSOrigin:  GetenvValue("CORS_ORIGIN", "*"),
+		WebDir:      GetenvValue("WEB_DIR", ""),
 	}, nil
 }
 

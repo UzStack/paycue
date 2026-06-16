@@ -261,7 +261,7 @@ func tuiWebhook(a *app) {
 func tuiTelegram(a *app) {
 	for {
 		idx, ok := selectMenu("Telegram accountlar", []string{
-			"Ro'yxatni ko'rish", "Account ulash", "Orqaga",
+			"Ro'yxatni ko'rish", "Account ulash", "Account o'chirish", "Orqaga",
 		})
 		if !ok {
 			return
@@ -273,6 +273,13 @@ func tuiTelegram(a *app) {
 		case 1:
 			tgConnect(a.c, "")
 		case 2:
+			id, ok := askRequired("O'chiriladigan telegram_account_id")
+			if !ok {
+				break
+			}
+			out, err := a.c.do("DELETE", "/api/telegram/"+id, nil)
+			show(out, err)
+		case 3:
 			return
 		}
 	}
@@ -339,7 +346,7 @@ func int64Of(out map[string]any, key string) int64 {
 
 func tuiCards(a *app) {
 	for {
-		idx, ok := selectMenu("Cartalar", []string{"Ro'yxatni ko'rish", "Carta qo'shish", "Orqaga"})
+		idx, ok := selectMenu("Cartalar", []string{"Ro'yxatni ko'rish", "Carta qo'shish", "Carta o'chirish", "Orqaga"})
 		if !ok {
 			return
 		}
@@ -359,6 +366,13 @@ func tuiCards(a *app) {
 			})
 			show(out, err)
 		case 2:
+			id, ok := askRequired("O'chiriladigan card id")
+			if !ok {
+				break
+			}
+			out, err := a.c.do("DELETE", "/api/cards/"+id, nil)
+			show(out, err)
+		case 3:
 			return
 		}
 	}

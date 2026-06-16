@@ -71,7 +71,13 @@ SESSION_DIR=sessions
 WORKERS=10
 TRANSACTION_TIMEOUT=30
 DEBUG=false
+CORS_ORIGIN=*
+WEB_DIR=            # sozlansa, server shu papkadan web UI ni (SPA) xizmat qiladi
 ```
+
+> `WEB_DIR` ko'rsatilsa (masalan `./web/dist`), API va web UI **bitta portda**
+> ishlaydi: `/` va dashboard yo'llari UI, `/api/*` va `/health/` esa API.
+> `install.sh` buni avtomatik sozlaydi.
 
 ```bash
 make build          # bin/paycue va bin/paycue-cli
@@ -103,9 +109,15 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `POST` | `/api/telegram/send-code` | ✓ | `telegram connect` (1-qadam) |
 | `POST` | `/api/telegram/verify` | ✓ | `telegram connect` (2-qadam) |
 | `GET`  | `/api/telegram` | ✓ | `telegram list` |
+| `DELETE` | `/api/telegram/{id}` | ✓ | `telegram delete` |
 | `POST` | `/api/cards` | ✓ | `card add` |
 | `GET`  | `/api/cards` | ✓ | `card list` |
+| `DELETE` | `/api/cards/{id}` | ✓ | `card delete` |
 | `POST` | `/api/transactions` | ✓ | `transaction create` |
+
+> `DELETE /api/telegram/{id}` accountni, uning cartalarini va tranzaksiyalarini
+> o'chiradi hamda kuzatuvni to'xtatib session faylini olib tashlaydi.
+> `DELETE /api/cards/{id}` cartani va uning tranzaksiyalarini o'chiradi.
 
 ### So'rov/javob maydonlari
 

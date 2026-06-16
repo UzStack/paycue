@@ -1,4 +1,6 @@
-const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080'
+// VITE_API_URL sozlanmagan bo'lsa nisbiy (same-origin) — server statik xizmat
+// qilganda istalgan hostda ishlaydi. Dev uchun web/.env da to'liq URL beriladi.
+const BASE = import.meta.env.VITE_API_URL ?? ''
 
 function getToken() {
   return localStorage.getItem('paycue_token')
@@ -22,8 +24,10 @@ export const api = {
   telegramSendCode: (body) => request('/api/telegram/send-code', { method: 'POST', body: JSON.stringify(body) }),
   telegramVerify: (body) => request('/api/telegram/verify', { method: 'POST', body: JSON.stringify(body) }),
   telegramList: () => request('/api/telegram'),
+  telegramDelete: (id) => request(`/api/telegram/${id}`, { method: 'DELETE' }),
   cardCreate: (body) => request('/api/cards', { method: 'POST', body: JSON.stringify(body) }),
   cardList: () => request('/api/cards'),
+  cardDelete: (id) => request(`/api/cards/${id}`, { method: 'DELETE' }),
   transactionCreate: (body) => request('/api/transactions', { method: 'POST', body: JSON.stringify(body) }),
 }
 

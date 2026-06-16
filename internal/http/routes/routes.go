@@ -30,9 +30,17 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 	mux.HandleFunc("POST /api/telegram/send-code", auth(h.TelegramSendCode))
 	mux.HandleFunc("POST /api/telegram/verify", auth(h.TelegramVerify))
 	mux.HandleFunc("GET /api/telegram", auth(h.TelegramList))
+	mux.HandleFunc("DELETE /api/telegram/{id}", auth(h.TelegramDelete))
 
 	mux.HandleFunc("POST /api/cards", auth(h.CardCreate))
 	mux.HandleFunc("GET /api/cards", auth(h.CardList))
+	mux.HandleFunc("DELETE /api/cards/{id}", auth(h.CardDelete))
 
 	mux.HandleFunc("POST /api/transactions", auth(h.TransactionCreate))
+
+	// Web UI (statik) — WEB_DIR sozlangan bo'lsa, SPA sifatida xizmat qiladi.
+	// /api/* va /health/ aniqroq pattern bo'lgani uchun ular ustun keladi.
+	if cfg.WebDir != "" {
+		mux.HandleFunc("/", handlers.SPAHandler(cfg.WebDir))
+	}
 }

@@ -231,8 +231,10 @@ Buyruqlar:
   telegram send-code --phone +998..  (skriptbop) kod yuboradi, account_id qaytaradi
   telegram verify --account ID --code 12345 [--password 2FA]  (skriptbop) tasdiqlash
   telegram list
+  telegram delete --account ID
   card add --account ID --number 8600... --owner "Ism Familiya"
   card list
+  card delete --id ID
   transaction create --amount 20000 [--card ID]   (card berilmasa avtomatik tanlanadi)
   version`)
 }
@@ -453,6 +455,16 @@ func cmdTelegram(c *client, args []string) error {
 		}
 		printJSON(out["data"])
 		return nil
+	case "delete":
+		fs := flag.NewFlagSet("delete", flag.ExitOnError)
+		account := fs.Int64("account", 0, "telegram_account_id")
+		fs.Parse(rest)
+		out, err := c.do("DELETE", fmt.Sprintf("/api/telegram/%d", *account), nil)
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
+		return nil
 	}
 	return fmt.Errorf("noma'lum subbuyruq: %s", sub)
 }
@@ -479,6 +491,16 @@ func cmdCard(c *client, args []string) error {
 		return nil
 	case "list":
 		out, err := c.do("GET", "/api/cards", nil)
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
+		return nil
+	case "delete":
+		fs := flag.NewFlagSet("delete", flag.ExitOnError)
+		id := fs.Int64("id", 0, "card id")
+		fs.Parse(rest)
+		out, err := c.do("DELETE", fmt.Sprintf("/api/cards/%d", *id), nil)
 		if err != nil {
 			return err
 		}

@@ -147,6 +147,20 @@ func (m *Manager) SubmitCode(accountID int64, code, password string) (bool, erro
 	}
 }
 
+// StopWatcher account kuzatuvini to'xtatadi va session faylini o'chiradi
+// (account o'chirilganda chaqiriladi).
+func (m *Manager) StopWatcher(accountID int64) {
+	m.mu.Lock()
+	if cancel, ok := m.watchers[accountID]; ok {
+		cancel()
+		delete(m.watchers, accountID)
+	}
+	m.mu.Unlock()
+	m.removeLogin(accountID)
+	sessionPath := filepath.Join(m.cfg.SessionDir, fmt.Sprintf("%d.json", accountID))
+	os.Remove(sessionPath)
+}
+
 func (m *Manager) removeLogin(accountID int64) {
 	m.mu.Lock()
 	delete(m.logins, accountID)

@@ -76,6 +76,18 @@ download_server() {
   info "paycue     $("$SERVER_BIN" --version 2>/dev/null | awk '{print $NF}' || echo '?')"
 }
 
+download_web() {
+  info "Web UI yuklanmoqda..."
+  mkdir -p "$INSTALL_DIR/web"
+  if curl -fsSL "$DL/paycue-web.tar.gz" -o /tmp/paycue-web.tar.gz; then
+    tar -xzf /tmp/paycue-web.tar.gz -C "$INSTALL_DIR/web"
+    rm -f /tmp/paycue-web.tar.gz
+    green "Web UI o'rnatildi: $INSTALL_DIR/web"
+  else
+    red "Web UI yuklanmadi (releasede paycue-web.tar.gz yo'q?) — o'tkazib yuborildi."
+  fi
+}
+
 create_service() {
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
@@ -112,6 +124,9 @@ if [ -f "$ENV_FILE" ] && [ -f "$SERVER_BIN" ]; then
   info "paycue o'rnatilgan — yangilanmoqda..."
   download_server
   download_cli
+  download_web
+  # Eski .env'da WEB_DIR bo'lmasa qo'shamiz.
+  grep -q '^WEB_DIR=' "$ENV_FILE" || echo "WEB_DIR=$INSTALL_DIR/web" >> "$ENV_FILE"
   create_service
   systemctl restart paycue
   green "paycue yangilandi va qayta ishga tushirildi."
@@ -138,12 +153,14 @@ SESSION_DIR=$INSTALL_DIR/sessions
 WORKERS=10
 TRANSACTION_TIMEOUT=30
 DEBUG=false
+WEB_DIR=$INSTALL_DIR/web
 EOF
 chmod 600 "$ENV_FILE"
 green ".env yaratildi: $ENV_FILE"
 
 download_server
 download_cli
+download_web
 create_service
 
 systemctl enable --now paycue
@@ -151,4 +168,5 @@ green "paycue o'rnatildi va ishga tushdi."
 echo
 info "Tekshirish:   systemctl status paycue"
 info "CLI:          paycue-cli            (interaktiv menu)"
-info "API manzili:  http://127.0.0.1:$PORT"
+info "Web UI:       http://127.0.0.1:$PORT"
+info "API:          http://127.0.0.1:$PORT/api"

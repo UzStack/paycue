@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/UzStack/paycue/internal/auth"
@@ -43,6 +46,25 @@ func fail(w http.ResponseWriter, code int, detail string) {
 
 func decode(r *http.Request, v any) error {
 	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// SPAHandler web UI statik fayllarini xizmat qiladi. Fayl topilmasa (client-side
+// routing yo'llari uchun) index.html qaytaradi.
+func SPAHandler(webDir string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		clean := filepath.Clean(r.URL.Path)
+		path := filepath.Join(webDir, clean)
+		// Katalog tashqarisiga chiqishni oldini olamiz.
+		if !strings.HasPrefix(path, filepath.Clean(webDir)) {
+			http.NotFound(w, r)
+			return
+		}
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			http.ServeFile(w, r, path)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(webDir, "index.html"))
+	}
 }
 
 // ---- Health ----
@@ -242,6 +264,26 @@ func (h *Handler) TelegramList(w http.ResponseWriter, r *http.Request) {
 	ok(w, list)
 }
 
+func (h *Handler) TelegramDelete(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id == 0 {
+		fail(w, http.StatusBadRequest, "noto'g'ri id")
+		return
+	}
+	account, err := repository.GetTelegramAccount(h.DB, id)
+	if err != nil || account.UserID != user.ID {
+		fail(w, http.StatusForbidden, "account sizga tegishli emas")
+		return
+	}
+	h.TG.StopWatcher(id) // kuzatuvni to'xtatib, session faylini o'chiradi
+	if err := repository.DeleteTelegramAccount(h.DB, id); err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{"deleted": id})
+}
+
 // ---- Cards ----
 
 func (h *Handler) CardCreate(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +327,25 @@ func lastFourDigits(s string) string {
 		return ""
 	}
 	return string(digits[len(digits)-4:])
+}
+
+func (h *Handler) CardDelete(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id == 0 {
+		fail(w, http.StatusBadRequest, "noto'g'ri id")
+		return
+	}
+	owner, err := repository.CardOwner(h.DB, id)
+	if err != nil || owner != user.ID {
+		fail(w, http.StatusForbidden, "carta sizga tegishli emas")
+		return
+	}
+	if err := repository.DeleteCard(h.DB, id); err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{"deleted": id})
 }
 
 func (h *Handler) CardList(w http.ResponseWriter, r *http.Request) {

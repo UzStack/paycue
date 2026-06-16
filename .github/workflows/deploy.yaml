@@ -18,6 +18,11 @@ jobs:
         with:
           go-version: "1.24"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Build binaries
         run: |
           # Server (paycue) — faqat linux (go-sqlite3 CGO; darwin cross-build qilinmaydi).
@@ -30,6 +35,14 @@ jobs:
               GOOS=$os GOARCH=$arch go build -o bin/paycue-cli-$os-$arch ./cmd/paycue-cli
             done
           done
+
+      - name: Build web UI
+        working-directory: web
+        run: |
+          npm ci
+          # Bo'sh VITE_API_URL -> nisbiy (same-origin) so'rovlar (server statik xizmat qiladi).
+          VITE_API_URL="" npm run build
+          tar -czf ../bin/paycue-web.tar.gz -C dist .
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
