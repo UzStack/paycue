@@ -1,0 +1,31 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import Landing from './pages/Landing'
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Layout from './components/Layout'
+import ProtectedRoute from './components/ProtectedRoute'
+import Overview from './pages/dashboard/Overview'
+import TelegramAccounts from './pages/dashboard/TelegramAccounts'
+import Cards from './pages/dashboard/Cards'
+import Webhook from './pages/dashboard/Webhook'
+import CreateTransaction from './pages/dashboard/CreateTransaction'
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+          <Route index element={<Overview />} />
+          <Route path="telegram" element={<TelegramAccounts />} />
+          <Route path="cards" element={<Cards />} />
+          <Route path="webhook" element={<Webhook />} />
+          <Route path="transaction" element={<CreateTransaction />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}

@@ -12,6 +12,7 @@ import (
 
 	"github.com/UzStack/paycue/internal/config"
 	"github.com/UzStack/paycue/internal/domain"
+	"github.com/UzStack/paycue/internal/http/middleware"
 	"github.com/UzStack/paycue/internal/http/routes"
 	"github.com/UzStack/paycue/internal/repository"
 	"github.com/UzStack/paycue/internal/telegram"
@@ -23,7 +24,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var VERSION = "2.6.0"
+var VERSION = "2.7.0"
 
 func author() {
 	fmt.Println("Fullname      Azamov Samandar")
@@ -111,7 +112,7 @@ func main() {
 	mux := http.NewServeMux()
 	routes.InitRoutes(mux, db, log, cfg, tgManager)
 
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux}
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: middleware.CORS(cfg.CORSOrigin, mux)}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("server failed", zap.Error(err))

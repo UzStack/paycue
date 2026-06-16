@@ -15,6 +15,7 @@ type Config struct {
 	Workers     int
 	TimeoutMins int
 	Debug       bool
+	CORSOrigin  string
 }
 
 func NewConfig() (*Config, error) {
@@ -59,6 +60,7 @@ func NewConfig() (*Config, error) {
 		Workers:     workers,
 		TimeoutMins: timeout,
 		Debug:       os.Getenv("DEBUG") == "true",
+		CORSOrigin:  GetenvValue("CORS_ORIGIN", "*"),
 	}, nil
 }
 

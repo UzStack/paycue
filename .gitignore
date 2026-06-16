@@ -4,3 +4,6 @@ tmp/
 .env
 bin/*
 logs/*
+web/node_modules/
+web/dist/
+web/.env
