@@ -9,40 +9,61 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
 const VERSION = "2.0.0"
+const defaultAPIAddr = "http://127.0.0.1:8080"
 
-func defaultAPI() string {
-	if v := os.Getenv("PAYCUE_API"); v != "" {
-		return v
-	}
-	return "http://127.0.0.1:8080"
+// ---- profil konfiguratsiyasi (bir nechta account) ----
+
+type profile struct {
+	API   string `json:"api"`
+	Token string `json:"token"`
 }
 
-func tokenPath() string {
+type cliConfig struct {
+	Current  string             `json:"current"`
+	Profiles map[string]profile `json:"profiles"`
+}
+
+func configDir() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "paycue", "token")
+	return filepath.Join(home, ".config", "paycue")
 }
 
-func loadToken() string {
-	if v := os.Getenv("PAYCUE_TOKEN"); v != "" {
-		return v
+func configPath() string { return filepath.Join(configDir(), "config.json") }
+
+func loadConfig() *cliConfig {
+	cfg := &cliConfig{Profiles: map[string]profile{}}
+	if b, err := os.ReadFile(configPath()); err == nil {
+		_ = json.Unmarshal(b, cfg)
+		if cfg.Profiles == nil {
+			cfg.Profiles = map[string]profile{}
+		}
+	} else {
+		// Eski yagona token faylini "default" profilga ko'chiramiz.
+		if b, err := os.ReadFile(filepath.Join(configDir(), "token")); err == nil {
+			tok := strings.TrimSpace(string(b))
+			if tok != "" {
+				cfg.Profiles["default"] = profile{API: defaultAPIAddr, Token: tok}
+				cfg.Current = "default"
+				saveConfig(cfg)
+			}
+		}
 	}
-	b, err := os.ReadFile(tokenPath())
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(b))
+	return cfg
 }
 
-func saveToken(token string) {
-	p := tokenPath()
-	_ = os.MkdirAll(filepath.Dir(p), 0o700)
-	_ = os.WriteFile(p, []byte(token), 0o600)
+func saveConfig(cfg *cliConfig) {
+	_ = os.MkdirAll(configDir(), 0o700)
+	b, _ := json.MarshalIndent(cfg, "", "  ")
+	_ = os.WriteFile(configPath(), b, 0o600)
 }
+
+// ---- HTTP client ----
 
 type client struct {
 	api   string
@@ -91,10 +112,28 @@ func printJSON(v any) {
 	fmt.Println(string(b))
 }
 
+// ---- profil/flag yechimi ----
+
+type app struct {
+	cfg         *cliConfig
+	profileName string // tanlangan (yoki current) profil nomi
+	c           *client
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 func main() {
 	var (
-		api   = flag.String("api", defaultAPI(), "API manzili")
-		token = flag.String("token", loadToken(), "foydalanuvchi tokeni")
+		apiFlag     = flag.String("api", "", "API manzili (profil/PAYCUE_API ustidan)")
+		tokenFlag   = flag.String("token", "", "token (profil/PAYCUE_TOKEN ustidan)")
+		profileFlag = flag.String("profile", "", "ishlatiladigan profil nomi (default: current)")
 	)
 	flag.Parse()
 	args := flag.Args()
@@ -103,7 +142,19 @@ func main() {
 		os.Exit(1)
 	}
 
-	c := &client{api: *api, token: *token}
+	cfg := loadConfig()
+	profileName := firstNonEmpty(*profileFlag, cfg.Current, "default")
+	prof := cfg.Profiles[profileName]
+
+	a := &app{
+		cfg:         cfg,
+		profileName: profileName,
+		c: &client{
+			api:   firstNonEmpty(*apiFlag, prof.API, os.Getenv("PAYCUE_API"), defaultAPIAddr),
+			token: firstNonEmpty(*tokenFlag, prof.Token, os.Getenv("PAYCUE_TOKEN")),
+		},
+	}
+
 	cmd := args[0]
 	rest := args[1:]
 
@@ -112,16 +163,18 @@ func main() {
 	case "version":
 		fmt.Println("paycue-cli", VERSION)
 		return
+	case "profile":
+		err = cmdProfile(a, rest)
 	case "register":
-		err = cmdRegister(c, rest)
+		err = cmdRegister(a, rest)
 	case "webhook":
-		err = cmdWebhook(c, rest)
+		err = cmdWebhook(a.c, rest)
 	case "telegram":
-		err = cmdTelegram(c, rest)
+		err = cmdTelegram(a.c, rest)
 	case "card":
-		err = cmdCard(c, rest)
+		err = cmdCard(a.c, rest)
 	case "transaction":
-		err = cmdTransaction(c, rest)
+		err = cmdTransaction(a.c, rest)
 	default:
 		usage()
 		os.Exit(1)
@@ -136,35 +189,137 @@ func usage() {
 	fmt.Println(`paycue-cli — paycue API client
 
 Global flaglar:
-  --api URL      API manzili (yoki PAYCUE_API env, default http://127.0.0.1:8080)
-  --token TOKEN  Token (yoki PAYCUE_TOKEN env, yoki ~/.config/paycue/token)
+  --api URL       API manzili (yoki PAYCUE_API, yoki profil)
+  --token TOKEN   Token (yoki PAYCUE_TOKEN, yoki profil)
+  --profile NAME  Ishlatiladigan profil (default: joriy profil)
+
+Profil (bir nechta account):
+  profile list                    Profillar ro'yxati
+  profile current                 Joriy profil
+  profile use NAME                Joriy profilni almashtirish
+  profile add NAME --token T [--api URL]   Profil qo'shish/yangilash
+  profile remove NAME             Profilni o'chirish
 
 Buyruqlar:
-  register --name NAME [--email E] [--phone P]   Ro'yxatdan o'tish (token qaytaradi va saqlaydi)
-  webhook --url URL                              Webhook URL sozlash (secret qaytaradi)
-  telegram send-code --phone +998..              Telegram account ulashni boshlash (kod yuboradi)
+  register --name NAME [--email E] [--phone P] [--profile NAME]
+                                  Ro'yxatdan o'tish (tokenni profilga saqlaydi)
+  webhook --url URL
+  telegram send-code --phone +998..
   telegram verify --account ID --code 12345 [--password 2FA]
-  telegram list                                  Telegram accountlar ro'yxati
-  card add --account ID --last4 7159 [--label L] Carta qo'shish
-  card list                                      Cartalar ro'yxati
-  transaction create --card ID --amount 20000    Transaction yaratish
+  telegram list
+  card add --account ID --last4 7159 [--label L]
+  card list
+  transaction create --card ID --amount 20000
   version`)
 }
 
-func cmdRegister(c *client, args []string) error {
+// ---- profil buyruqlari ----
+
+func cmdProfile(a *app, args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("subbuyruq kerak: list | current | use | add | remove")
+	}
+	sub, rest := args[0], args[1:]
+	switch sub {
+	case "list":
+		if len(a.cfg.Profiles) == 0 {
+			fmt.Println("Profillar yo'q. 'register' yoki 'profile add' bilan qo'shing.")
+			return nil
+		}
+		names := make([]string, 0, len(a.cfg.Profiles))
+		for n := range a.cfg.Profiles {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			marker := "  "
+			if n == a.cfg.Current {
+				marker = "* " // joriy profil
+			}
+			fmt.Printf("%s%s\t%s\n", marker, n, a.cfg.Profiles[n].API)
+		}
+		return nil
+	case "current":
+		if a.cfg.Current == "" {
+			fmt.Println("Joriy profil tanlanmagan.")
+			return nil
+		}
+		fmt.Println(a.cfg.Current)
+		return nil
+	case "use":
+		if len(rest) == 0 {
+			return fmt.Errorf("profil nomi kerak: profile use NAME")
+		}
+		name := rest[0]
+		if _, ok := a.cfg.Profiles[name]; !ok {
+			return fmt.Errorf("profil topilmadi: %s", name)
+		}
+		a.cfg.Current = name
+		saveConfig(a.cfg)
+		fmt.Println("Joriy profil:", name)
+		return nil
+	case "add":
+		fs := flag.NewFlagSet("add", flag.ExitOnError)
+		token := fs.String("token", "", "foydalanuvchi tokeni")
+		api := fs.String("api", defaultAPIAddr, "API manzili")
+		if len(rest) == 0 {
+			return fmt.Errorf("profil nomi kerak: profile add NAME --token T")
+		}
+		name := rest[0]
+		fs.Parse(rest[1:])
+		if *token == "" {
+			return fmt.Errorf("--token majburiy")
+		}
+		a.cfg.Profiles[name] = profile{API: *api, Token: *token}
+		if a.cfg.Current == "" {
+			a.cfg.Current = name
+		}
+		saveConfig(a.cfg)
+		fmt.Println("Profil saqlandi:", name)
+		return nil
+	case "remove":
+		if len(rest) == 0 {
+			return fmt.Errorf("profil nomi kerak: profile remove NAME")
+		}
+		name := rest[0]
+		if _, ok := a.cfg.Profiles[name]; !ok {
+			return fmt.Errorf("profil topilmadi: %s", name)
+		}
+		delete(a.cfg.Profiles, name)
+		if a.cfg.Current == name {
+			a.cfg.Current = ""
+			for n := range a.cfg.Profiles {
+				a.cfg.Current = n
+				break
+			}
+		}
+		saveConfig(a.cfg)
+		fmt.Println("Profil o'chirildi:", name)
+		return nil
+	}
+	return fmt.Errorf("noma'lum subbuyruq: %s", sub)
+}
+
+// ---- buyruqlar ----
+
+func cmdRegister(a *app, args []string) error {
 	fs := flag.NewFlagSet("register", flag.ExitOnError)
 	name := fs.String("name", "", "ism familiya")
 	email := fs.String("email", "", "pochta")
 	phone := fs.String("phone", "", "telefon")
+	profName := fs.String("profile", "", "saqlanadigan profil nomi (default: default)")
 	fs.Parse(args)
-	out, err := c.do("POST", "/api/register", map[string]any{"name": *name, "email": *email, "phone": *phone})
+	out, err := a.c.do("POST", "/api/register", map[string]any{"name": *name, "email": *email, "phone": *phone})
 	if err != nil {
 		return err
 	}
 	if d, ok := out["data"].(map[string]any); ok {
 		if t, ok := d["token"].(string); ok {
-			saveToken(t)
-			fmt.Println("Token saqlandi:", tokenPath())
+			pName := firstNonEmpty(*profName, "default")
+			a.cfg.Profiles[pName] = profile{API: a.c.api, Token: t}
+			a.cfg.Current = pName
+			saveConfig(a.cfg)
+			fmt.Printf("Token '%s' profiliga saqlandi (joriy qilib belgilandi).\n", pName)
 		}
 	}
 	printJSON(out["data"])

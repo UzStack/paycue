@@ -149,7 +149,7 @@ aks holda dastur `3 marta` qayta urinadi.
 ## CLI
 
 ```bash
-paycue-cli register --name "Ism" --email pochta@example.com   # token saqlanadi
+paycue-cli register --name "Ism" --email pochta@example.com   # token profilga saqlanadi
 paycue-cli webhook --url https://example.com/hook
 paycue-cli telegram send-code --phone +99890...
 paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
@@ -159,8 +159,28 @@ paycue-cli card list
 paycue-cli transaction create --card 1 --amount 20000
 ```
 
-Sozlash: `--api` (yoki `PAYCUE_API`), `--token` (yoki `PAYCUE_TOKEN`, yoki
-`~/.config/paycue/token` — `register`dan keyin avtomatik saqlanadi).
+### Bir nechta account (profillar)
+
+CLI bir nechta paycue accountni profillar orqali boshqaradi. Har profil o'z
+`api` + `token`ini `~/.config/paycue/config.json`da saqlaydi.
+
+```bash
+paycue-cli register --name "Ali" --email ali@x.com --profile ali   # 'ali' profili
+paycue-cli register --name "Vali" --phone +998... --profile vali   # 'vali' profili
+
+paycue-cli profile list           # profillar (joriy * bilan belgilanadi)
+paycue-cli profile current        # joriy profil
+paycue-cli profile use ali        # joriy profilni almashtirish
+paycue-cli profile add boss --token <token> [--api URL]   # tashqi token qo'shish
+paycue-cli profile remove vali
+
+# bitta buyruq uchun profilni almashtirmasdan tanlash:
+paycue-cli --profile vali card list
+```
+
+Yechim tartibi (token/api uchun): `--token`/`--api` flag → tanlangan profil →
+`PAYCUE_TOKEN`/`PAYCUE_API` env → default. Eski yagona `~/.config/paycue/token`
+fayli ilk ishga tushishda avtomatik `default` profilga ko'chiriladi.
 
 ## Muhim ma'lumotlar
 
