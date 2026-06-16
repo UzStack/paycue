@@ -55,12 +55,17 @@ func Mtproto(ctx context.Context, db *sql.DB, log *zap.Logger, watch_id int64, w
 		switch from := msg.FromID.(type) {
 		case *tg.PeerUser:
 			senderID = from.UserID
-		case *tg.PeerChannel:
-			return nil
-		case *tg.PeerChat:
+		case *tg.PeerChannel, *tg.PeerChat:
 			return nil
 		default:
-			return nil
+			// Shaxsiy (1-1) chatlarda kelgan xabarning FromID maydoni bo'sh
+			// bo'ladi — yuboruvchi PeerID orqali aniqlanadi. O'zimiz yuborgan
+			// (Out) xabarlarni e'tiborga olmaymiz.
+			peer, ok := msg.PeerID.(*tg.PeerUser)
+			if !ok || msg.Out {
+				return nil
+			}
+			senderID = peer.UserID
 		}
 
 		if !isWatched(senderID, watch_id) {
