@@ -245,6 +245,7 @@ func (m *Manager) doLogin(ctx context.Context, client *telegram.Client, account 
 	pl.sent <- nil // SendCode muvaffaqiyatli — HTTP javobi qaytadi
 	codeHash := sc.PhoneCodeHash
 
+	twoFA := false // SignIn 2FA talab qilgani aniqlangach true bo'ladi
 	for {
 		var req verifyReq
 		select {
@@ -255,8 +256,9 @@ func (m *Manager) doLogin(ctx context.Context, client *telegram.Client, account 
 			return ctx.Err()
 		}
 
-		_, err := client.Auth().SignIn(ctx, account.Phone, req.code, codeHash)
-		if errors.Is(err, auth.ErrPasswordAuthNeeded) {
+		// 2FA kerakligi allaqachon aniqlangan bo'lsa, qaytadan SignIn qilmaymiz
+		// (kod allaqachon ishlatilgan) — to'g'ridan-to'g'ri parolni tekshiramiz.
+		if twoFA {
 			if req.password == "" {
 				pl.resCh <- verifyRes{need2FA: true}
 				continue
@@ -265,11 +267,26 @@ func (m *Manager) doLogin(ctx context.Context, client *telegram.Client, account 
 				pl.resCh <- verifyRes{err: err}
 				continue
 			}
+			break
+		}
+
+		_, err := client.Auth().SignIn(ctx, account.Phone, req.code, codeHash)
+		if errors.Is(err, auth.ErrPasswordAuthNeeded) {
+			twoFA = true
+			if req.password != "" {
+				if _, err := client.Auth().Password(ctx, req.password); err != nil {
+					pl.resCh <- verifyRes{err: err}
+					continue
+				}
+				break
+			}
+			pl.resCh <- verifyRes{need2FA: true}
+			continue
 		} else if err != nil {
 			pl.resCh <- verifyRes{err: err}
 			continue
 		}
-		break // muvaffaqiyatli
+		break // muvaffaqiyatli (2FA siz)
 	}
 
 	self, err := client.Self(ctx)

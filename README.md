@@ -100,8 +100,8 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `POST` | `/api/login` | ✗ | `login` |
 | `GET`  | `/api/webhook` | ✓ | `webhook` (urlsiz) |
 | `POST` | `/api/webhook` | ✓ | `webhook --url` |
-| `POST` | `/api/telegram/send-code` | ✓ | `telegram send-code` |
-| `POST` | `/api/telegram/verify` | ✓ | `telegram verify` |
+| `POST` | `/api/telegram/send-code` | ✓ | `telegram connect` (1-qadam) |
+| `POST` | `/api/telegram/verify` | ✓ | `telegram connect` (2-qadam) |
 | `GET`  | `/api/telegram` | ✓ | `telegram list` |
 | `POST` | `/api/cards` | ✓ | `card add` |
 | `GET`  | `/api/cards` | ✓ | `card list` |
@@ -217,6 +217,9 @@ kelganini bilib oling.
 
 ### Telegram account ulash
 
+API ikki qadamli (send-code → verify). CLI'da esa bu **bitta** `telegram connect`
+buyrug'i — kodni va kerak bo'lsa 2FA parolni interaktiv so'raydi.
+
 ```bash
 # 1) kod yuborish
 curl -X POST http://<host>:8080/api/telegram/send-code \
@@ -286,8 +289,7 @@ paycue-cli register --name "Ism" --email pochta@example.com --password "parol123
 paycue-cli login --login pochta@example.com --password "parol123"   # boshqa qurilmada token olish
 paycue-cli webhook                              # joriy webhookni ko'rish
 paycue-cli webhook --url https://example.com/hook   # webhook sozlash
-paycue-cli telegram send-code --phone +99890...
-paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
+paycue-cli telegram connect --phone +99890...   # kod va 2FA ni interaktiv so'raydi
 paycue-cli telegram list
 paycue-cli card add --account 1 --last4 7159 --label Asosiy
 paycue-cli card list
@@ -305,6 +307,7 @@ paycue-cli register --name "Vali" --phone +998... --profile vali   # 'vali' prof
 
 paycue-cli profile list           # profillar (joriy * bilan belgilanadi)
 paycue-cli profile current        # joriy profil
+paycue-cli profile token [ali]    # profil tokenini chiqarish (default: joriy)
 paycue-cli profile use ali        # joriy profilni almashtirish
 paycue-cli profile add boss --token <token> [--api URL]   # tashqi token qo'shish
 paycue-cli profile remove vali

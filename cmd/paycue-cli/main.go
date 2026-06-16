@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.2.0"
+const VERSION = "2.3.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -216,6 +216,7 @@ Global flaglar:
 Profil (bir nechta account):
   profile list                    Profillar ro'yxati
   profile current                 Joriy profil
+  profile token [NAME]            Profil tokenini ko'rsatish (default: joriy)
   profile use NAME                Joriy profilni almashtirish
   profile add NAME --token T [--api URL]   Profil qo'shish/yangilash
   profile remove NAME             Profilni o'chirish
@@ -225,9 +226,8 @@ Buyruqlar:
                                   Ro'yxatdan o'tish (tokenni profilga saqlaydi)
   login --login EMAIL|PHONE --password PW [--profile NAME]
                                   Parol bilan kirish (tokenni profilga saqlaydi)
-  webhook --url URL
-  telegram send-code --phone +998..
-  telegram verify --account ID --code 12345 [--password 2FA]
+  webhook [--url URL]             URL bo'lsa sozlaydi, bo'lmasa joriysini ko'rsatadi
+  telegram connect [--phone +998..]  Account ulash (kod va 2FA ni interaktiv so'raydi)
   telegram list
   card add --account ID --last4 7159 [--label L]
   card list
@@ -239,7 +239,7 @@ Buyruqlar:
 
 func cmdProfile(a *app, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("subbuyruq kerak: list | current | use | add | remove")
+		return fmt.Errorf("subbuyruq kerak: list | current | token | use | add | remove")
 	}
 	sub, rest := args[0], args[1:]
 	switch sub {
@@ -267,6 +267,18 @@ func cmdProfile(a *app, args []string) error {
 			return nil
 		}
 		fmt.Println(a.cfg.Current)
+		return nil
+	case "token":
+		// profile token [NAME] — profil tokenini chiqaradi (default: joriy).
+		name := a.cfg.Current
+		if len(rest) > 0 {
+			name = rest[0]
+		}
+		p, ok := a.cfg.Profiles[name]
+		if !ok {
+			return fmt.Errorf("profil topilmadi: %s", name)
+		}
+		fmt.Println(p.Token)
 		return nil
 	case "use":
 		if len(rest) == 0 {
@@ -395,33 +407,16 @@ func cmdWebhook(c *client, args []string) error {
 
 func cmdTelegram(c *client, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("subbuyruq kerak: send-code | verify | list")
+		return fmt.Errorf("subbuyruq kerak: connect | list")
 	}
 	sub, rest := args[0], args[1:]
 	switch sub {
-	case "send-code":
-		fs := flag.NewFlagSet("send-code", flag.ExitOnError)
+	case "connect":
+		fs := flag.NewFlagSet("connect", flag.ExitOnError)
 		phone := fs.String("phone", "", "telefon raqami")
 		fs.Parse(rest)
-		out, err := c.do("POST", "/api/telegram/send-code", map[string]any{"phone": *phone})
-		if err != nil {
-			return err
-		}
-		printJSON(out["data"])
-		return nil
-	case "verify":
-		fs := flag.NewFlagSet("verify", flag.ExitOnError)
-		account := fs.Int64("account", 0, "telegram_account_id")
-		code := fs.String("code", "", "tasdiqlash kodi")
-		password := fs.String("password", "", "2FA paroli (kerak bo'lsa)")
-		fs.Parse(rest)
-		out, err := c.do("POST", "/api/telegram/verify", map[string]any{
-			"telegram_account_id": *account, "code": *code, "password": *password,
-		})
-		if err != nil {
-			return err
-		}
-		printJSON(out["data"])
+		// Bitta interaktiv oqim: kod yuborish -> kod -> (kerak bo'lsa) 2FA.
+		tgConnect(c, *phone)
 		return nil
 	case "list":
 		out, err := c.do("GET", "/api/telegram", nil)

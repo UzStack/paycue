@@ -165,7 +165,7 @@ func tuiProfiles(a *app) {
 			fmt.Printf("%s%s\t%s\n", marker, n, a.cfg.Profiles[n].API)
 		}
 		idx, ok := selectMenu("Profillar", []string{
-			"Profilga o'tish", "Profil qo'shish", "Profil o'chirish", "Orqaga",
+			"Profilga o'tish", "Tokenni ko'rsatish", "Profil qo'shish", "Profil o'chirish", "Orqaga",
 		})
 		if !ok {
 			return
@@ -185,6 +185,17 @@ func tuiProfiles(a *app) {
 			a.useProfile(names[i])
 			fmt.Println("Joriy profil:", names[i])
 		case 1:
+			// Tokenni ko'rsatish (nusxalash uchun).
+			if len(names) == 0 {
+				break
+			}
+			i, ok := selectMenu("Qaysi profil tokeni?", names)
+			if !ok {
+				break
+			}
+			fmt.Println("\nToken (" + names[i] + "):")
+			fmt.Println(a.cfg.Profiles[names[i]].Token)
+		case 2:
 			name, ok := askRequired("Profil nomi")
 			if !ok {
 				break
@@ -203,7 +214,7 @@ func tuiProfiles(a *app) {
 			}
 			saveConfig(a.cfg)
 			fmt.Println("Saqlandi:", name)
-		case 2:
+		case 3:
 			if len(names) == 0 {
 				break
 			}
@@ -222,7 +233,7 @@ func tuiProfiles(a *app) {
 			}
 			saveConfig(a.cfg)
 			fmt.Println("O'chirildi:", name)
-		case 3:
+		case 4:
 			return
 		}
 	}
@@ -250,7 +261,7 @@ func tuiWebhook(a *app) {
 func tuiTelegram(a *app) {
 	for {
 		idx, ok := selectMenu("Telegram accountlar", []string{
-			"Ro'yxatni ko'rish", "Account ulash (kod yuborish)", "Kodni tasdiqlash", "Orqaga",
+			"Ro'yxatni ko'rish", "Account ulash", "Orqaga",
 		})
 		if !ok {
 			return
@@ -260,30 +271,70 @@ func tuiTelegram(a *app) {
 			out, err := a.c.do("GET", "/api/telegram", nil)
 			show(out, err)
 		case 1:
-			phone, ok := askRequired("Telefon raqami (+998...)")
-			if !ok {
-				break
-			}
-			out, err := a.c.do("POST", "/api/telegram/send-code", map[string]any{"phone": phone})
-			show(out, err)
-			if err == nil {
-				fmt.Println("Kod Telegramga yuborildi. 'Kodni tasdiqlash' bilan davom eting.")
-			}
+			tgConnect(a.c, "")
 		case 2:
-			id, _ := strconv.ParseInt(ask("telegram_account_id"), 10, 64)
-			code, ok := askRequired("Tasdiqlash kodi")
-			if !ok {
-				break
-			}
-			password := askPassword("2FA paroli (bo'lmasa bo'sh qoldiring)")
-			out, err := a.c.do("POST", "/api/telegram/verify", map[string]any{
-				"telegram_account_id": id, "code": code, "password": password,
-			})
-			show(out, err)
-		case 3:
 			return
 		}
 	}
+}
+
+// tgConnect bitta oqimda Telegram account ulaydi:
+// telefon -> kod yuborish -> kodni so'rash -> tasdiqlash -> (kerak bo'lsa) 2FA parol.
+func tgConnect(c *client, phone string) {
+	if phone == "" {
+		var ok bool
+		phone, ok = askRequired("Telefon raqami (+998...)")
+		if !ok {
+			return
+		}
+	}
+
+	out, err := c.do("POST", "/api/telegram/send-code", map[string]any{"phone": phone})
+	if err != nil {
+		show(out, err)
+		return
+	}
+	accountID := int64Of(out, "telegram_account_id")
+	fmt.Println("📩 Tasdiqlash kodi Telegramga yuborildi.")
+
+	code, ok := askRequired("Telegramdagi kodni kiriting")
+	if !ok {
+		return
+	}
+
+	out, err = c.do("POST", "/api/telegram/verify", map[string]any{
+		"telegram_account_id": accountID, "code": code, "password": "",
+	})
+	if err != nil {
+		show(out, err)
+		return
+	}
+
+	// 2FA kerak bo'lsa parol so'rab, qaytadan tasdiqlaymiz.
+	if d, ok := out["data"].(map[string]any); ok {
+		if need, _ := d["need_password"].(bool); need {
+			fmt.Println("🔐 2FA yoqilgan — parol kerak.")
+			pass := askPassword("2FA parolingiz")
+			out, err = c.do("POST", "/api/telegram/verify", map[string]any{
+				"telegram_account_id": accountID, "code": code, "password": pass,
+			})
+			if err != nil {
+				show(out, err)
+				return
+			}
+		}
+	}
+	show(out, err)
+}
+
+// int64Of javob data'sidan raqamli maydonni oladi (JSON raqami float64 bo'ladi).
+func int64Of(out map[string]any, key string) int64 {
+	if d, ok := out["data"].(map[string]any); ok {
+		if v, ok := d[key].(float64); ok {
+			return int64(v)
+		}
+	}
+	return 0
 }
 
 func tuiCards(a *app) {
