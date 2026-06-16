@@ -37,8 +37,9 @@ func InitTables(db *sql.DB) {
 		CREATE TABLE IF NOT EXISTS cards (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			telegram_account_id INTEGER NOT NULL,
+			number TEXT DEFAULT '',
 			last4 TEXT NOT NULL,
-			label TEXT DEFAULT '',
+			owner_name TEXT DEFAULT '',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			UNIQUE(telegram_account_id, last4)
 		);
@@ -59,9 +60,11 @@ func InitTables(db *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
-	// Eski DB'lar uchun migratsiya: password_hash ustuni bo'lmasa qo'shamiz.
+	// Eski DB'lar uchun migratsiya: yangi ustunlar bo'lmasa qo'shamiz.
 	// (ustun allaqachon bo'lsa SQLite xato qaytaradi — e'tiborsiz qoldiramiz.)
 	db.Exec("ALTER TABLE users ADD COLUMN password_hash TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE cards ADD COLUMN number TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE cards ADD COLUMN owner_name TEXT DEFAULT ''")
 }
 
 // ---- Users ----
@@ -174,17 +177,20 @@ func ListActiveTelegramAccounts(db *sql.DB) ([]domain.TelegramAccount, error) {
 
 // ---- Cards ----
 
-func CreateCard(db *sql.DB, telegramAccountID int64, last4, label string) (*domain.Card, error) {
-	res, err := db.Exec("INSERT INTO cards(telegram_account_id, last4, label) VALUES(?, ?, ?)", telegramAccountID, last4, label)
+// CreateCard to'liq raqam va egasi ismi bilan carta yaratadi. last4 — raqamdan
+// ajratilgan oxirgi 4 raqam (Telegram xabariga moslash uchun).
+func CreateCard(db *sql.DB, telegramAccountID int64, number, last4, ownerName string) (*domain.Card, error) {
+	res, err := db.Exec("INSERT INTO cards(telegram_account_id, number, last4, owner_name) VALUES(?, ?, ?, ?)",
+		telegramAccountID, number, last4, ownerName)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return &domain.Card{ID: id, TelegramAccountID: telegramAccountID, Last4: last4, Label: label}, nil
+	return &domain.Card{ID: id, TelegramAccountID: telegramAccountID, Number: number, Last4: last4, OwnerName: ownerName}, nil
 }
 
 func ListCardsByUser(db *sql.DB, userID int64) ([]domain.Card, error) {
-	rows, err := db.Query(`SELECT c.id, c.telegram_account_id, c.last4, COALESCE(c.label,''), c.created_at
+	rows, err := db.Query(`SELECT c.id, c.telegram_account_id, COALESCE(c.number,''), c.last4, COALESCE(c.owner_name,''), c.created_at
 		FROM cards c JOIN telegram_accounts t ON t.id = c.telegram_account_id
 		WHERE t.user_id=? ORDER BY c.id DESC`, userID)
 	if err != nil {
@@ -194,7 +200,7 @@ func ListCardsByUser(db *sql.DB, userID int64) ([]domain.Card, error) {
 	var list []domain.Card
 	for rows.Next() {
 		var c domain.Card
-		if err := rows.Scan(&c.ID, &c.TelegramAccountID, &c.Last4, &c.Label, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.TelegramAccountID, &c.Number, &c.Last4, &c.OwnerName, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, c)
@@ -204,8 +210,8 @@ func ListCardsByUser(db *sql.DB, userID int64) ([]domain.Card, error) {
 
 func GetCard(db *sql.DB, id int64) (*domain.Card, error) {
 	var c domain.Card
-	err := db.QueryRow(`SELECT id, telegram_account_id, last4, COALESCE(label,'') FROM cards WHERE id=?`, id).
-		Scan(&c.ID, &c.TelegramAccountID, &c.Last4, &c.Label)
+	err := db.QueryRow(`SELECT id, telegram_account_id, COALESCE(number,''), last4, COALESCE(owner_name,'') FROM cards WHERE id=?`, id).
+		Scan(&c.ID, &c.TelegramAccountID, &c.Number, &c.Last4, &c.OwnerName)
 	if err != nil {
 		return nil, err
 	}
@@ -243,9 +249,9 @@ func PickLeastLoadedCard(db *sql.DB, userID int64, timeoutMins int) (int64, erro
 // GetCardByLast4 muayyan telegram account bo'yicha oxirgi 4 raqamga mos cartani topadi.
 func GetCardByLast4(db *sql.DB, telegramAccountID int64, last4 string) (*domain.Card, error) {
 	var c domain.Card
-	err := db.QueryRow(`SELECT id, telegram_account_id, last4, COALESCE(label,'')
+	err := db.QueryRow(`SELECT id, telegram_account_id, COALESCE(number,''), last4, COALESCE(owner_name,'')
 		FROM cards WHERE telegram_account_id=? AND last4=?`, telegramAccountID, last4).
-		Scan(&c.ID, &c.TelegramAccountID, &c.Last4, &c.Label)
+		Scan(&c.ID, &c.TelegramAccountID, &c.Number, &c.Last4, &c.OwnerName)
 	if err != nil {
 		return nil, err
 	}

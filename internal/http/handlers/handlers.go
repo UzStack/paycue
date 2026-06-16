@@ -248,11 +248,16 @@ func (h *Handler) CardCreate(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFrom(r)
 	var in struct {
 		TelegramAccountID int64  `json:"telegram_account_id"`
-		Last4             string `json:"last4"`
-		Label             string `json:"label"`
+		Number            string `json:"number"`     // to'liq carta raqami
+		OwnerName         string `json:"owner_name"` // carta egasining ismi
 	}
-	if err := decode(r, &in); err != nil || in.TelegramAccountID == 0 || len(in.Last4) != 4 {
-		fail(w, http.StatusBadRequest, "telegram_account_id va 4 xonali last4 majburiy")
+	if err := decode(r, &in); err != nil || in.TelegramAccountID == 0 {
+		fail(w, http.StatusBadRequest, "telegram_account_id va number majburiy")
+		return
+	}
+	last4 := lastFourDigits(in.Number)
+	if last4 == "" {
+		fail(w, http.StatusBadRequest, "number kamida 4 ta raqamdan iborat bo'lishi kerak")
 		return
 	}
 	account, err := repository.GetTelegramAccount(h.DB, in.TelegramAccountID)
@@ -260,12 +265,26 @@ func (h *Handler) CardCreate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusForbidden, "telegram account sizga tegishli emas")
 		return
 	}
-	card, err := repository.CreateCard(h.DB, in.TelegramAccountID, in.Last4, in.Label)
+	card, err := repository.CreateCard(h.DB, in.TelegramAccountID, in.Number, last4, in.OwnerName)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	ok(w, card)
+}
+
+// lastFourDigits matndagi raqamlarning oxirgi 4 tasini qaytaradi (yetmasa "").
+func lastFourDigits(s string) string {
+	digits := make([]rune, 0, len(s))
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			digits = append(digits, r)
+		}
+	}
+	if len(digits) < 4 {
+		return ""
+	}
+	return string(digits[len(digits)-4:])
 }
 
 func (h *Handler) CardList(w http.ResponseWriter, r *http.Request) {
@@ -314,9 +333,19 @@ func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	ok(w, map[string]any{
+	// Qaysi cartada yaratilgani (raqam/egasi) javobda qaytadi.
+	resp := map[string]any{
 		"amount":         amount,
 		"card_id":        cardID,
 		"transaction_id": transID,
-	})
+	}
+	if card, err := repository.GetCard(h.DB, cardID); err == nil {
+		resp["card"] = map[string]any{
+			"id":         card.ID,
+			"number":     card.Number,
+			"last4":      card.Last4,
+			"owner_name": card.OwnerName,
+		}
+	}
+	ok(w, resp)
 }

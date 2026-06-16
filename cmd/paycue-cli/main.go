@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.5.0"
+const VERSION = "2.6.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -231,7 +231,7 @@ Buyruqlar:
   telegram send-code --phone +998..  (skriptbop) kod yuboradi, account_id qaytaradi
   telegram verify --account ID --code 12345 [--password 2FA]  (skriptbop) tasdiqlash
   telegram list
-  card add --account ID --last4 7159 [--label L]
+  card add --account ID --number 8600... --owner "Ism Familiya"
   card list
   transaction create --amount 20000 [--card ID]   (card berilmasa avtomatik tanlanadi)
   version`)
@@ -466,11 +466,11 @@ func cmdCard(c *client, args []string) error {
 	case "add":
 		fs := flag.NewFlagSet("add", flag.ExitOnError)
 		account := fs.Int64("account", 0, "telegram_account_id")
-		last4 := fs.String("last4", "", "oxirgi 4 raqam")
-		label := fs.String("label", "", "nom")
+		number := fs.String("number", "", "to'liq carta raqami")
+		owner := fs.String("owner", "", "carta egasining ismi")
 		fs.Parse(rest)
 		out, err := c.do("POST", "/api/cards", map[string]any{
-			"telegram_account_id": *account, "last4": *last4, "label": *label,
+			"telegram_account_id": *account, "number": *number, "owner_name": *owner,
 		})
 		if err != nil {
 			return err

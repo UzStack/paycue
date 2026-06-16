@@ -163,10 +163,10 @@ Javob: 2FA kerak bo'lsa `{ "need_password": true }`; aks holda `{ "telegram_acco
 | Maydon | Tur | Majburiy | Izoh |
 | --- | --- | --- | --- |
 | `telegram_account_id` | int | ✓ | siznikilardan biri |
-| `last4` | string | ✓ | aniq 4 raqam (`7159`) |
-| `label` | string | ✗ | ixtiyoriy nom |
+| `number` | string | ✓ | to'liq carta raqami; oxirgi 4 raqam undan avtomatik ajratiladi |
+| `owner_name` | string | ✗ | carta egasining ismi |
 
-Javob: `Card` obyekti.
+Javob: `Card` obyekti (`last4` raqamdan ajratiladi — Telegram xabaridagi `*7159` ga moslash uchun).
 
 **`GET /api/cards`** — cartalar ro'yxati. Javob: `Card[]`.
 
@@ -180,8 +180,16 @@ Javob: `Card` obyekti.
 `card_id` berilmasa, dastur **eng kam yuklangan** cartani (hozir active transactioni
 eng kam) avtomatik tanlaydi — bu summa farqini (drift) minimallashtiradi.
 
-Javob: `{ "amount": int, "card_id": int, "transaction_id": string }` — `card_id` aslida
-ishlatilgan carta, `amount` band bo'lmagan summa (carta bo'yicha increment qilingan).
+Javob: `amount` band bo'lmagan summa, va **qaysi cartada yaratilgani**:
+
+```jsonc
+{
+  "amount": 20001,
+  "card_id": 1,
+  "transaction_id": "<uuid>",
+  "card": { "id": 1, "number": "8600...7159", "last4": "7159", "owner_name": "Samandar" }
+}
+```
 
 ### Obyekt sxemalari
 
@@ -190,8 +198,8 @@ ishlatilgan carta, `amount` band bo'lmagan summa (carta bo'yicha increment qilin
 { "id": 1, "user_id": 1, "phone": "+99890...", "tg_user_id": 123, "username": "ali", "status": "active", "created_at": "..." }
 // status: "pending" (kod kutilmoqda) | "active" (ulangan)
 
-// Card
-{ "id": 1, "telegram_account_id": 1, "last4": "7159", "label": "Asosiy", "created_at": "..." }
+// Card  (last4 — number'dan avtomatik ajratiladi)
+{ "id": 1, "telegram_account_id": 1, "number": "8600...7159", "last4": "7159", "owner_name": "Samandar", "created_at": "..." }
 ```
 
 ---
@@ -247,7 +255,7 @@ curl -X POST http://<host>:8080/api/telegram/verify \
 ```bash
 curl -X POST http://<host>:8080/api/cards \
   -H "Authorization: Bearer <token>" \
-  -d '{"telegram_account_id":1,"last4":"7159","label":"Asosiy"}'
+  -d '{"telegram_account_id":1,"number":"8600 1234 5678 7159","owner_name":"Samandar"}'
 ```
 
 `GET /api/cards` — cartalar ro'yxati.
@@ -308,7 +316,7 @@ paycue-cli telegram connect --phone +99890...   # interaktiv: kod va 2FA ni so'r
 paycue-cli telegram send-code --phone +99890...               # -> telegram_account_id
 paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
 paycue-cli telegram list
-paycue-cli card add --account 1 --last4 7159 --label Asosiy
+paycue-cli card add --account 1 --number "8600 1234 5678 7159" --owner "Samandar"
 paycue-cli card list
 paycue-cli transaction create --amount 20000            # carta avtomatik tanlanadi
 paycue-cli transaction create --card 1 --amount 20000   # aniq carta

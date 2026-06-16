@@ -349,13 +349,13 @@ func tuiCards(a *app) {
 			show(out, err)
 		case 1:
 			id, _ := strconv.ParseInt(ask("telegram_account_id"), 10, 64)
-			last4, ok := askRequired("Oxirgi 4 raqam")
+			number, ok := askRequired("Carta raqami (to'liq)")
 			if !ok {
 				break
 			}
-			label := ask("Nom (ixtiyoriy)")
+			owner := ask("Carta egasining ismi")
 			out, err := a.c.do("POST", "/api/cards", map[string]any{
-				"telegram_account_id": id, "last4": last4, "label": label,
+				"telegram_account_id": id, "number": number, "owner_name": owner,
 			})
 			show(out, err)
 		case 2:

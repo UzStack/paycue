@@ -34,8 +34,9 @@ type TelegramAccount struct {
 type Card struct {
 	ID                int64     `json:"id"`
 	TelegramAccountID int64     `json:"telegram_account_id"`
-	Last4             string    `json:"last4"`
-	Label             string    `json:"label,omitempty"`
+	Number            string    `json:"number,omitempty"`     // to'liq carta raqami
+	Last4             string    `json:"last4"`                // raqamdan ajratiladi (Telegram xabariga moslash uchun)
+	OwnerName         string    `json:"owner_name,omitempty"` // carta egasining ismi
 	CreatedAt         time.Time `json:"created_at"`
 }
 
