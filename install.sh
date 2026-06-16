@@ -42,6 +42,9 @@ download_binaries() {
   mv "$SERVER_BIN.new" "$SERVER_BIN"
   mv "$CLI_BIN.new" "$CLI_BIN"
   green "Binarylar yangilandi."
+  # O'rnatilgan versiyalarni ko'rsatamiz (oxirgi maydon — versiya raqami).
+  info "paycue     $("$SERVER_BIN" --version 2>/dev/null | awk '{print $NF}' || echo '?')"
+  info "paycue-cli $("$CLI_BIN" version 2>/dev/null | awk '{print $NF}' || echo '?')"
 }
 
 create_service() {
