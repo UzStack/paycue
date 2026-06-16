@@ -1,6 +1,51 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../../api'
+import { api, getToken } from '../../api'
+
+function TokenCard() {
+  const token = getToken() || ''
+  const [revealed, setRevealed] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const masked = token ? token.slice(0, 6) + '••••••••••••••••••••' + token.slice(-4) : ''
+
+  function copy() {
+    navigator.clipboard.writeText(token).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 mb-8">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-sm font-semibold text-zinc-100">API token</h2>
+        <span className="text-xs text-zinc-500">Authorization: Bearer …</span>
+      </div>
+      <p className="text-zinc-400 text-xs mb-3">
+        API'ga to'g'ridan-to'g'ri murojaat qilish yoki CLI uchun ishlatiladi. Maxfiy saqlang.
+      </p>
+      <div className="flex items-center gap-2">
+        <code className="flex-1 px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-md text-zinc-200 text-xs font-mono break-all">
+          {revealed ? token : masked}
+        </code>
+        <button
+          onClick={() => setRevealed(!revealed)}
+          title={revealed ? 'Yashirish' : 'Ko\'rsatish'}
+          className="px-2.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md text-xs transition-colors shrink-0"
+        >
+          {revealed ? 'Yashirish' : 'Ko\'rsatish'}
+        </button>
+        <button
+          onClick={copy}
+          className="px-3 py-2 bg-sky-500 hover:bg-sky-400 text-white rounded-md text-xs font-medium transition-colors shrink-0"
+        >
+          {copied ? 'Nusxalandi' : 'Nusxalash'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ label, value, loading, icon }) {
   return (
@@ -64,6 +109,8 @@ export default function Overview() {
           }
         />
       </div>
+
+      <TokenCard />
 
       <div>
         <h2 className="text-sm font-medium text-zinc-400 mb-3 uppercase tracking-wider">Tezkor amallar</h2>

@@ -7,3 +7,5 @@ logs/*
 web/node_modules/
 web/dist/
 web/.env
+.playwright-mcp/
+*.png

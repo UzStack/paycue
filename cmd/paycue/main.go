@@ -24,7 +24,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var VERSION = "2.8.0"
+var VERSION = "2.8.1"
 
 func author() {
 	fmt.Println("Fullname      Azamov Samandar")

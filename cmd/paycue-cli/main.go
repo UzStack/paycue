@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.6.0"
+const VERSION = "2.8.1"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
