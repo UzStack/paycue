@@ -3,10 +3,85 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paycue - To'lov avtomatizatsiyasi</title>
+
+  <!-- Primary SEO -->
+  <title>Paycue — Telegram + Humo orqali to'lovlarni avtomatlashtirish | Open Source SaaS</title>
+  <meta name="description" content="Paycue — Humo kartaga tushgan to'lovlarni Telegram orqali real vaqtda aniqlab, webhook orqali API'ngizga yetkazadigan open source SaaS. To'lov tizimiga integratsiyasiz to'lovlarni avtomatlashtiring." />
+  <meta name="keywords" content="paycue, to'lov avtomatizatsiya, humo karta webhook, telegram to'lov, payment automation uzbekistan, humo payment api, telegram payment bot, open source payment, webhook to'lov, plastik karta to'lov aniqlash" />
+  <meta name="author" content="Paycue" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <meta name="application-name" content="Paycue" />
+  <link rel="canonical" href="https://paycue.uz/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Paycue" />
+  <meta property="og:locale" content="uz_UZ" />
+  <meta property="og:title" content="Paycue — Telegram + Humo orqali to'lovlarni avtomatlashtirish" />
+  <meta property="og:description" content="Humo kartaga tushgan to'lovlarni Telegram orqali real vaqtda aniqlab, webhook orqali API'ngizga yetkazadigan open source SaaS. To'lov tizimiga integratsiyasiz." />
+  <meta property="og:url" content="https://paycue.uz/" />
+  <meta property="og:image" content="https://paycue.uz/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Paycue — Telegram + Humo to'lov avtomatizatsiyasi" />
+  <meta name="twitter:description" content="Humo kartaga tushgan to'lovlarni Telegram orqali aniqlab, webhook orqali API'ngizga yetkazing. Open source SaaS." />
+  <meta name="twitter:image" content="https://paycue.uz/og-image.png" />
+
+  <!-- Structured data: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Paycue",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Linux",
+    "description": "Humo kartaga tushgan to'lovlarni Telegram orqali real vaqtda aniqlab, webhook orqali API'ngizga yetkazadigan open source SaaS dastur.",
+    "url": "https://paycue.uz/",
+    "softwareHelp": "https://github.com/UzStack/paycue",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "Paycue", "url": "https://github.com/UzStack/paycue" }
+  }
+  </script>
+
+  <!-- Structured data: FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Paycue qanday ishlaydi?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Telegram accountingiz @HUMOcardbot orqali kartaga tushgan to'lovlarni kuzatadi. To'lov aniqlanganda Paycue sizning webhook URL'ingizga POST so'rov yuboradi." }
+      },
+      {
+        "@type": "Question",
+        "name": "Telegram accountni ulash xavfsizmi?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Ha. Paycue to'liq open source, ma'lumotlar o'z serveringizda qoladi va Telegram session fayllari sizda saqlanadi." }
+      },
+      {
+        "@type": "Question",
+        "name": "To'lov tizimiga integratsiya kerakmi?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yo'q. Paycue rasmiy to'lov shlyuzini talab qilmaydi — oddiy Humo plastik kartasi va Telegram accounti yetarli." }
+      },
+      {
+        "@type": "Question",
+        "name": "Paycue bepulmi?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Ha, Paycue open source dastur. O'z serveringizda bepul ishga tushirasiz." }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <div id="root"></div>
+  <noscript>
+    <h1>Paycue — Telegram + Humo orqali to'lovlarni avtomatlashtirish</h1>
+    <p>Paycue — Humo kartaga tushgan to'lovlarni Telegram orqali real vaqtda aniqlab, webhook orqali API'ngizga yetkazadigan open source SaaS dastur. To'lov tizimiga integratsiya qilmasdan to'lovlarni avtomatlashtiring.</p>
+    <p>Ushbu sahifani ko'rish uchun JavaScript yoqilgan brauzer kerak. Manba kodi: <a href="https://github.com/UzStack/paycue">github.com/UzStack/paycue</a></p>
+  </noscript>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

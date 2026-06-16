@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /$
+Allow: /login
+Allow: /register
+Disallow: /dashboard
+
+Sitemap: https://paycue.uz/sitemap.xml

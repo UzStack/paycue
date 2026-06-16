@@ -57,6 +57,52 @@ const STEPS = [
   },
 ]
 
+const USE_CASES = [
+  {
+    title: 'Onlayn do\'konlar',
+    desc: "Telegram bot yoki saytdagi buyurtmalar uchun karta to'lovini avtomatik tasdiqlang — mijoz to'lov qilishi bilanoq buyurtma o'tadi.",
+  },
+  {
+    title: 'Telegram botlar',
+    desc: "Obuna, raqamli mahsulot yoki xizmat sotuvchi botlarga to'lov qabul qilishni ulang. Webhook kelishi bilan kontentni avtomatik bering.",
+  },
+  {
+    title: 'Freelancer va xizmatlar',
+    desc: "Mijozdan oldindan to'lov qabul qiling — har bir to'lov o'ziga xos summa bilan ajratiladi, kim to'laganini aniq bilasiz.",
+  },
+  {
+    title: 'SaaS va obunalar',
+    desc: "Oylik to'lovlarni kuzating. To'lov tushganda foydalanuvchi tarifini API orqali avtomatik faollashtiring.",
+  },
+]
+
+const FAQ = [
+  {
+    q: 'Paycue qanday ishlaydi?',
+    a: "Telegram accountingiz @HUMOcardbot orqali kartaga tushgan to'lovlarni real vaqtda kuzatadi. To'lov aniqlanganda Paycue sizning webhook URL'ingizga POST so'rov yuboradi — tizimingiz buyurtmani avtomatik tasdiqlaydi.",
+  },
+  {
+    q: 'To\'lov tizimiga (Payme/Click) integratsiya kerakmi?',
+    a: "Yo'q. Paycue rasmiy to'lov shlyuzini, shartnoma yoki merchant akkauntni talab qilmaydi. Oddiy Humo plastik kartasi va Telegram accounti yetarli.",
+  },
+  {
+    q: 'Telegram accountni ulash xavfsizmi?',
+    a: "Ha. Paycue to'liq open source — kodni o'zingiz ko'rishingiz mumkin. Barcha ma'lumotlar o'z serveringizda qoladi, Telegram session fayllari ham sizda saqlanadi, uchinchi tomonga hech narsa yuborilmaydi.",
+  },
+  {
+    q: 'Bir vaqtda ikki kishi bir xil summa to\'lasa nima bo\'ladi?',
+    a: "Paycue har bir transaction uchun band bo'lmagan noyob summani (masalan 20001, 20002) ajratadi. Shu sababli to'lovlar bir-biriga aralashmaydi va to'g'ri tranzaksiyaga bog'lanadi.",
+  },
+  {
+    q: 'Bir nechta karta ishlatsam bo\'ladimi?',
+    a: "Ha. Bir nechta Telegram account va Humo karta qo'shishingiz mumkin. Karta ko'rsatmasangiz, Paycue eng kam yuklangan kartani avtomatik tanlab, yukni teng taqsimlaydi.",
+  },
+  {
+    q: 'Paycue bepulmi?',
+    a: "Ha, Paycue open source. O'z serveringizda bepul ishga tushirasiz. Bitta server bir nechta foydalanuvchiga (multi-tenant) xizmat qiladi.",
+  },
+]
+
 const FEATURES = [
   {
     title: 'Real vaqtda monitoring',
@@ -224,6 +270,64 @@ export default function Landing() {
               <h3 className="text-zinc-100 font-semibold text-base mb-2">{f.title}</h3>
               <p className="text-zinc-400 text-sm leading-relaxed">{f.desc}</p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Kimlar uchun - use cases */}
+      <section className="border-t border-zinc-800/60 bg-zinc-900/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+          <div className="mb-12">
+            <h2 className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight mb-3">
+              Kimlar uchun
+            </h2>
+            <p className="text-zinc-400 text-base max-w-lg">
+              Karta orqali to'lov qabul qiladigan va uni avtomatik tasdiqlashni xohlaydigan har qanday loyiha uchun.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {USE_CASES.map((u) => (
+              <div key={u.title} className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors">
+                <h3 className="text-zinc-100 font-semibold text-base mb-2">{u.title}</h3>
+                <p className="text-zinc-400 text-sm leading-relaxed">{u.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ - tez-tez beriladigan savollar */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+        <div className="mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight mb-3">
+            Tez-tez beriladigan savollar
+          </h2>
+          <p className="text-zinc-400 text-base max-w-lg">
+            Paycue haqida eng ko'p so'raladigan savollar va javoblar.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-x-8 gap-y-2">
+          {FAQ.map((item) => (
+            <details
+              key={item.q}
+              className="group border-b border-zinc-800 py-4"
+            >
+              <summary className="flex items-center justify-between cursor-pointer list-none text-zinc-100 font-medium text-base">
+                {item.q}
+                <svg
+                  className="w-5 h-5 text-zinc-500 shrink-0 ml-4 transition-transform group-open:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
+              </summary>
+              <p className="text-zinc-400 text-sm leading-relaxed mt-3 pr-8">{item.a}</p>
+            </details>
           ))}
         </div>
       </section>
