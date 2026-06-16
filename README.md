@@ -41,10 +41,22 @@ cartalarini qo'shadi va webhook manzilini sozlaydi.
 curl -fsSL https://raw.githubusercontent.com/UzStack/paycue/main/install.sh | sudo bash
 ```
 
-`install.sh`:
+`install.sh` (Linux — server + CLI):
 - o'rnatilmagan bo'lsa — `APP_ID`/`APP_HASH` so'raydi, `.env` tayyorlaydi, oxirgi
   releasedan binarylarni yuklaydi, systemd servisini sozlaydi, `paycue-cli`ni o'rnatadi;
 - o'rnatilgan bo'lsa — binarylarni oxirgi releasega yangilab, servisni qayta ishga tushiradi.
+
+### Faqat CLI (macOS yoki masofaviy server uchun)
+
+Faqat `paycue-cli`ni o'rnatish (serversiz). macOS'da avtomatik shu rejim tanlanadi
+(server systemd talab qiladi, macOS'da bu yo'q):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/UzStack/paycue/main/install.sh | sudo bash -s -- --cli-only
+```
+
+> Server **Linux**da ishlaydi (SQLite/CGO). macOS uchun faqat CLI build qilinadi —
+> u masofaviy serverga `--api` orqali ulanadi.
 
 ## Qo'lda ishga tushirish
 
@@ -85,6 +97,7 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | --- | --- | --- | --- |
 | `GET`  | `/health/` | ✗ | — |
 | `POST` | `/api/register` | ✗ | `register` |
+| `POST` | `/api/login` | ✗ | `login` |
 | `POST` | `/api/webhook` | ✓ | `webhook` |
 | `POST` | `/api/telegram/send-code` | ✓ | `telegram send-code` |
 | `POST` | `/api/telegram/verify` | ✓ | `telegram verify` |
@@ -102,8 +115,18 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `name` | string | ✓ | ism familiya |
 | `email` | string | shartli | `email` yoki `phone` dan kamida bittasi |
 | `phone` | string | shartli | — |
+| `password` | string | ✓ | kamida 6 belgi (keyin login uchun) |
 
 Javob: `{ "id": int, "name": string, "token": string }`
+
+**`POST /api/login`** — email/phone + parol orqali tokenni qaytaradi.
+
+| Maydon | Tur | Majburiy | Izoh |
+| --- | --- | --- | --- |
+| `login` | string | ✓ | email yoki phone |
+| `password` | string | ✓ | — |
+
+Javob: `{ "token": string }`. Noto'g'ri bo'lsa `401`.
 
 **`POST /api/webhook`** — webhook URL sozlash.
 
@@ -247,8 +270,18 @@ aks holda dastur `3 marta` qayta urinadi.
 
 ## CLI
 
+`paycue-cli` ni **argumentsiz** ishga tushirsangiz interaktiv menu (TUI) ochiladi —
+hamma narsani menyudan tanlab boshqarasiz:
+
 ```bash
-paycue-cli register --name "Ism" --email pochta@example.com   # token profilga saqlanadi
+paycue-cli            # interaktiv menu
+```
+
+Yoki to'g'ridan-to'g'ri buyruqlar bilan:
+
+```bash
+paycue-cli register --name "Ism" --email pochta@example.com --password "parol123"
+paycue-cli login --login pochta@example.com --password "parol123"   # boshqa qurilmada token olish
 paycue-cli webhook --url https://example.com/hook
 paycue-cli telegram send-code --phone +99890...
 paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]

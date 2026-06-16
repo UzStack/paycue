@@ -15,6 +15,7 @@ func InitTables(db *sql.DB) {
 			name TEXT NOT NULL,
 			email TEXT,
 			phone TEXT,
+			password_hash TEXT DEFAULT '',
 			token TEXT NOT NULL UNIQUE,
 			webhook_url TEXT DEFAULT '',
 			webhook_secret TEXT DEFAULT '',
@@ -58,17 +59,28 @@ func InitTables(db *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
+	// Eski DB'lar uchun migratsiya: password_hash ustuni bo'lmasa qo'shamiz.
+	// (ustun allaqachon bo'lsa SQLite xato qaytaradi — e'tiborsiz qoldiramiz.)
+	db.Exec("ALTER TABLE users ADD COLUMN password_hash TEXT DEFAULT ''")
 }
 
 // ---- Users ----
 
-func CreateUser(db *sql.DB, name, email, phone, token string) (*domain.User, error) {
-	res, err := db.Exec("INSERT INTO users(name, email, phone, token) VALUES(?, ?, ?, ?)", name, email, phone, token)
+func CreateUser(db *sql.DB, name, email, phone, passwordHash, token string) (*domain.User, error) {
+	res, err := db.Exec("INSERT INTO users(name, email, phone, password_hash, token) VALUES(?, ?, ?, ?, ?)",
+		name, email, phone, passwordHash, token)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
 	return &domain.User{ID: id, Name: name, Email: email, Phone: phone, Token: token}, nil
+}
+
+// GetLoginByIdentifier email yoki phone bo'yicha login uchun token va parol hashini qaytaradi.
+func GetLoginByIdentifier(db *sql.DB, identifier string) (token, passwordHash string, err error) {
+	err = db.QueryRow(`SELECT token, COALESCE(password_hash,'') FROM users
+		WHERE email=? OR phone=? LIMIT 1`, identifier, identifier).Scan(&token, &passwordHash)
+	return token, passwordHash, err
 }
 
 func GetUserByToken(db *sql.DB, token string) (*domain.User, error) {

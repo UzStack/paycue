@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.0.0"
+const VERSION = "2.1.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -117,7 +117,19 @@ func printJSON(v any) {
 type app struct {
 	cfg         *cliConfig
 	profileName string // tanlangan (yoki current) profil nomi
+	apiFlag     string // --api (profil ustidan)
+	tokenFlag   string // --token (profil ustidan)
 	c           *client
+}
+
+// useProfile joriy profilni almashtirib, client'ni qayta quradi (TUI uchun).
+func (a *app) useProfile(name string) {
+	a.profileName = name
+	prof := a.cfg.Profiles[name]
+	a.c = &client{
+		api:   firstNonEmpty(a.apiFlag, prof.API, os.Getenv("PAYCUE_API"), defaultAPIAddr),
+		token: firstNonEmpty(a.tokenFlag, prof.Token, os.Getenv("PAYCUE_TOKEN")),
+	}
 }
 
 func firstNonEmpty(vals ...string) string {
@@ -137,10 +149,6 @@ func main() {
 	)
 	flag.Parse()
 	args := flag.Args()
-	if len(args) == 0 {
-		usage()
-		os.Exit(1)
-	}
 
 	cfg := loadConfig()
 	profileName := firstNonEmpty(*profileFlag, cfg.Current, "default")
@@ -149,10 +157,18 @@ func main() {
 	a := &app{
 		cfg:         cfg,
 		profileName: profileName,
+		apiFlag:     *apiFlag,
+		tokenFlag:   *tokenFlag,
 		c: &client{
 			api:   firstNonEmpty(*apiFlag, prof.API, os.Getenv("PAYCUE_API"), defaultAPIAddr),
 			token: firstNonEmpty(*tokenFlag, prof.Token, os.Getenv("PAYCUE_TOKEN")),
 		},
+	}
+
+	// Argument bo'lmasa — interaktiv menu (TUI).
+	if len(args) == 0 {
+		runTUI(a)
+		return
 	}
 
 	cmd := args[0]
@@ -167,6 +183,8 @@ func main() {
 		err = cmdProfile(a, rest)
 	case "register":
 		err = cmdRegister(a, rest)
+	case "login":
+		err = cmdLogin(a, rest)
 	case "webhook":
 		err = cmdWebhook(a.c, rest)
 	case "telegram":
@@ -188,6 +206,8 @@ func main() {
 func usage() {
 	fmt.Println(`paycue-cli — paycue API client
 
+Argumentsiz ishga tushirilsa interaktiv menu (TUI) ochiladi.
+
 Global flaglar:
   --api URL       API manzili (yoki PAYCUE_API, yoki profil)
   --token TOKEN   Token (yoki PAYCUE_TOKEN, yoki profil)
@@ -201,8 +221,10 @@ Profil (bir nechta account):
   profile remove NAME             Profilni o'chirish
 
 Buyruqlar:
-  register --name NAME [--email E] [--phone P] [--profile NAME]
+  register --name NAME [--email E] [--phone P] --password PW [--profile NAME]
                                   Ro'yxatdan o'tish (tokenni profilga saqlaydi)
+  login --login EMAIL|PHONE --password PW [--profile NAME]
+                                  Parol bilan kirish (tokenni profilga saqlaydi)
   webhook --url URL
   telegram send-code --phone +998..
   telegram verify --account ID --code 12345 [--password 2FA]
@@ -307,23 +329,50 @@ func cmdRegister(a *app, args []string) error {
 	name := fs.String("name", "", "ism familiya")
 	email := fs.String("email", "", "pochta")
 	phone := fs.String("phone", "", "telefon")
+	password := fs.String("password", "", "parol (kamida 6 belgi)")
 	profName := fs.String("profile", "", "saqlanadigan profil nomi (default: default)")
 	fs.Parse(args)
-	out, err := a.c.do("POST", "/api/register", map[string]any{"name": *name, "email": *email, "phone": *phone})
+	out, err := a.c.do("POST", "/api/register", map[string]any{
+		"name": *name, "email": *email, "phone": *phone, "password": *password,
+	})
 	if err != nil {
 		return err
 	}
-	if d, ok := out["data"].(map[string]any); ok {
-		if t, ok := d["token"].(string); ok {
-			pName := firstNonEmpty(*profName, "default")
-			a.cfg.Profiles[pName] = profile{API: a.c.api, Token: t}
-			a.cfg.Current = pName
-			saveConfig(a.cfg)
-			fmt.Printf("Token '%s' profiliga saqlandi (joriy qilib belgilandi).\n", pName)
-		}
-	}
+	a.saveTokenFromResponse(out, *profName)
 	printJSON(out["data"])
 	return nil
+}
+
+func cmdLogin(a *app, args []string) error {
+	fs := flag.NewFlagSet("login", flag.ExitOnError)
+	login := fs.String("login", "", "email yoki telefon")
+	password := fs.String("password", "", "parol")
+	profName := fs.String("profile", "", "saqlanadigan profil nomi (default: default)")
+	fs.Parse(args)
+	out, err := a.c.do("POST", "/api/login", map[string]any{"login": *login, "password": *password})
+	if err != nil {
+		return err
+	}
+	a.saveTokenFromResponse(out, *profName)
+	printJSON(out["data"])
+	return nil
+}
+
+// saveTokenFromResponse javobdagi tokenni nomli profilga saqlaydi va joriy qiladi.
+func (a *app) saveTokenFromResponse(out map[string]any, profName string) {
+	d, ok := out["data"].(map[string]any)
+	if !ok {
+		return
+	}
+	t, ok := d["token"].(string)
+	if !ok || t == "" {
+		return
+	}
+	pName := firstNonEmpty(profName, "default")
+	a.cfg.Profiles[pName] = profile{API: a.c.api, Token: t}
+	a.cfg.Current = pName
+	saveConfig(a.cfg)
+	fmt.Printf("Token '%s' profiliga saqlandi (joriy qilib belgilandi).\n", pName)
 }
 
 func cmdWebhook(c *client, args []string) error {

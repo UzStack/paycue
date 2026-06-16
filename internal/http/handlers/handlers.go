@@ -55,9 +55,10 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var in struct {
-		Name  string `json:"name"`
-		Email string `json:"email"`
-		Phone string `json:"phone"`
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Phone    string `json:"phone"`
+		Password string `json:"password"`
 	}
 	if err := decode(r, &in); err != nil {
 		fail(w, http.StatusBadRequest, "noto'g'ri json")
@@ -72,12 +73,21 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "email yoki phone dan kamida bittasi majburiy")
 		return
 	}
+	if len(in.Password) < 6 {
+		fail(w, http.StatusBadRequest, "password kamida 6 ta belgidan iborat bo'lishi kerak")
+		return
+	}
+	hash, err := auth.HashPassword(in.Password)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "parol hashlanmadi")
+		return
+	}
 	token, err := auth.GenerateToken()
 	if err != nil {
 		fail(w, http.StatusInternalServerError, "token yaratilmadi")
 		return
 	}
-	user, err := repository.CreateUser(h.DB, in.Name, in.Email, in.Phone, token)
+	user, err := repository.CreateUser(h.DB, in.Name, in.Email, in.Phone, hash, token)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
@@ -87,6 +97,29 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		"name":  user.Name,
 		"token": user.Token,
 	})
+}
+
+// Login email/phone + password orqali tokenni qaytaradi (public).
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Login    string `json:"login"` // email yoki phone
+		Password string `json:"password"`
+	}
+	if err := decode(r, &in); err != nil {
+		fail(w, http.StatusBadRequest, "noto'g'ri json")
+		return
+	}
+	in.Login = strings.TrimSpace(in.Login)
+	if in.Login == "" || in.Password == "" {
+		fail(w, http.StatusBadRequest, "login va password majburiy")
+		return
+	}
+	token, hash, err := repository.GetLoginByIdentifier(h.DB, in.Login)
+	if err != nil || hash == "" || !auth.CheckPassword(hash, in.Password) {
+		fail(w, http.StatusUnauthorized, "login yoki parol noto'g'ri")
+		return
+	}
+	ok(w, map[string]any{"token": token})
 }
 
 // ---- Webhook sozlash ----
