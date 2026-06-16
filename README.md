@@ -282,14 +282,18 @@ yashiriladi):
 paycue-cli            # interaktiv menu
 ```
 
-Yoki to'g'ridan-to'g'ri buyruqlar bilan:
+Har bir amalni **ikki xil** ishlatish mumkin: interaktiv menu (TUI) yoki
+to'g'ridan-to'g'ri subcommand (skript/avtomatlashtirish uchun qulay):
 
 ```bash
 paycue-cli register --name "Ism" --email pochta@example.com --password "parol123"
 paycue-cli login --login pochta@example.com --password "parol123"   # boshqa qurilmada token olish
 paycue-cli webhook                              # joriy webhookni ko'rish
 paycue-cli webhook --url https://example.com/hook   # webhook sozlash
-paycue-cli telegram connect --phone +99890...   # kod va 2FA ni interaktiv so'raydi
+paycue-cli telegram connect --phone +99890...   # interaktiv: kod va 2FA ni so'raydi
+# yoki skriptbop (non-interaktiv) ikki qadam:
+paycue-cli telegram send-code --phone +99890...               # -> telegram_account_id
+paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
 paycue-cli telegram list
 paycue-cli card add --account 1 --last4 7159 --label Asosiy
 paycue-cli card list

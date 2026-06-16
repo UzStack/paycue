@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.3.0"
+const VERSION = "2.4.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -227,7 +227,9 @@ Buyruqlar:
   login --login EMAIL|PHONE --password PW [--profile NAME]
                                   Parol bilan kirish (tokenni profilga saqlaydi)
   webhook [--url URL]             URL bo'lsa sozlaydi, bo'lmasa joriysini ko'rsatadi
-  telegram connect [--phone +998..]  Account ulash (kod va 2FA ni interaktiv so'raydi)
+  telegram connect [--phone +998..]  Account ulash (interaktiv: kod va 2FA ni so'raydi)
+  telegram send-code --phone +998..  (skriptbop) kod yuboradi, account_id qaytaradi
+  telegram verify --account ID --code 12345 [--password 2FA]  (skriptbop) tasdiqlash
   telegram list
   card add --account ID --last4 7159 [--label L]
   card list
@@ -407,16 +409,42 @@ func cmdWebhook(c *client, args []string) error {
 
 func cmdTelegram(c *client, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("subbuyruq kerak: connect | list")
+		return fmt.Errorf("subbuyruq kerak: connect | send-code | verify | list")
 	}
 	sub, rest := args[0], args[1:]
 	switch sub {
 	case "connect":
+		// Interaktiv oqim: kod yuborish -> kod -> (kerak bo'lsa) 2FA.
 		fs := flag.NewFlagSet("connect", flag.ExitOnError)
 		phone := fs.String("phone", "", "telefon raqami")
 		fs.Parse(rest)
-		// Bitta interaktiv oqim: kod yuborish -> kod -> (kerak bo'lsa) 2FA.
 		tgConnect(c, *phone)
+		return nil
+	case "send-code":
+		// Skriptbop (non-interaktiv): kod yuboradi, telegram_account_id qaytaradi.
+		fs := flag.NewFlagSet("send-code", flag.ExitOnError)
+		phone := fs.String("phone", "", "telefon raqami")
+		fs.Parse(rest)
+		out, err := c.do("POST", "/api/telegram/send-code", map[string]any{"phone": *phone})
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
+		return nil
+	case "verify":
+		// Skriptbop (non-interaktiv): kod (va kerak bo'lsa 2FA parol) bilan tasdiqlash.
+		fs := flag.NewFlagSet("verify", flag.ExitOnError)
+		account := fs.Int64("account", 0, "telegram_account_id")
+		code := fs.String("code", "", "tasdiqlash kodi")
+		password := fs.String("password", "", "2FA paroli (kerak bo'lsa)")
+		fs.Parse(rest)
+		out, err := c.do("POST", "/api/telegram/verify", map[string]any{
+			"telegram_account_id": *account, "code": *code, "password": *password,
+		})
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
 		return nil
 	case "list":
 		out, err := c.do("GET", "/api/telegram", nil)
