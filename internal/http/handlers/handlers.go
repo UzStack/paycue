@@ -73,14 +73,20 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusBadRequest, "email yoki phone dan kamida bittasi majburiy")
 		return
 	}
-	if len(in.Password) < 6 {
-		fail(w, http.StatusBadRequest, "password kamida 6 ta belgidan iborat bo'lishi kerak")
-		return
-	}
-	hash, err := auth.HashPassword(in.Password)
-	if err != nil {
-		fail(w, http.StatusInternalServerError, "parol hashlanmadi")
-		return
+	// Parol ixtiyoriy. Berilsa kamida 6 belgi bo'lishi va hashlanishi kerak;
+	// berilmasa parolsiz account (login ishlamaydi, faqat token bilan kiriladi).
+	hash := ""
+	if in.Password != "" {
+		if len(in.Password) < 6 {
+			fail(w, http.StatusBadRequest, "password kamida 6 ta belgidan iborat bo'lishi kerak")
+			return
+		}
+		var hErr error
+		hash, hErr = auth.HashPassword(in.Password)
+		if hErr != nil {
+			fail(w, http.StatusInternalServerError, "parol hashlanmadi")
+			return
+		}
 	}
 	token, err := auth.GenerateToken()
 	if err != nil {
@@ -280,23 +286,37 @@ func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
 		CardID int64 `json:"card_id"`
 		Amount int64 `json:"amount"`
 	}
-	if err := decode(r, &in); err != nil || in.CardID == 0 || in.Amount <= 0 {
-		fail(w, http.StatusBadRequest, "card_id va musbat amount majburiy")
+	if err := decode(r, &in); err != nil || in.Amount <= 0 {
+		fail(w, http.StatusBadRequest, "musbat amount majburiy")
 		return
 	}
-	owner, err := repository.CardOwner(h.DB, in.CardID)
-	if err != nil || owner != user.ID {
-		fail(w, http.StatusForbidden, "carta sizga tegishli emas")
-		return
+
+	cardID := in.CardID
+	if cardID == 0 {
+		// card_id berilmagan — eng kam yuklangan cartani avtomatik tanlaymiz.
+		var err error
+		cardID, err = repository.PickLeastLoadedCard(h.DB, user.ID, h.Cfg.TimeoutMins)
+		if err != nil {
+			fail(w, http.StatusBadRequest, "carta topilmadi — avval carta qo'shing")
+			return
+		}
+	} else {
+		// Aniq carta berilgan — egasi siz ekanligini tekshiramiz.
+		owner, err := repository.CardOwner(h.DB, cardID)
+		if err != nil || owner != user.ID {
+			fail(w, http.StatusForbidden, "carta sizga tegishli emas")
+			return
+		}
 	}
-	amount, transID, err := usecase.CreateTransactionForCard(h.DB, in.CardID, in.Amount, h.Cfg.TimeoutMins)
+
+	amount, transID, err := usecase.CreateTransactionForCard(h.DB, cardID, in.Amount, h.Cfg.TimeoutMins)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	ok(w, map[string]any{
 		"amount":         amount,
-		"card_id":        in.CardID,
+		"card_id":        cardID,
 		"transaction_id": transID,
 	})
 }

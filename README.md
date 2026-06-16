@@ -116,7 +116,7 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `name` | string | ✓ | ism familiya |
 | `email` | string | shartli | `email` yoki `phone` dan kamida bittasi |
 | `phone` | string | shartli | — |
-| `password` | string | ✓ | kamida 6 belgi (keyin login uchun) |
+| `password` | string | ✗ | berilsa kamida 6 belgi (keyin login uchun). Berilmasa parolsiz account — faqat token bilan kiriladi |
 
 Javob: `{ "id": int, "name": string, "token": string }`
 
@@ -125,9 +125,10 @@ Javob: `{ "id": int, "name": string, "token": string }`
 | Maydon | Tur | Majburiy | Izoh |
 | --- | --- | --- | --- |
 | `login` | string | ✓ | email yoki phone |
-| `password` | string | ✓ | — |
+| `password` | string | ✓ | bo'sh parol qabul qilinmaydi |
 
-Javob: `{ "token": string }`. Noto'g'ri bo'lsa `401`.
+Javob: `{ "token": string }`. Login/parol noto'g'ri bo'lsa yoki account parolsiz
+ro'yxatdan o'tgan bo'lsa `401`.
 
 **`POST /api/webhook`** — webhook URL sozlash.
 
@@ -173,10 +174,14 @@ Javob: `Card` obyekti.
 
 | Maydon | Tur | Majburiy | Izoh |
 | --- | --- | --- | --- |
-| `card_id` | int | ✓ | siznikilardan biri |
 | `amount` | int | ✓ | so'ralayotgan summa (musbat) |
+| `card_id` | int | ✗ | siznikilardan biri; **berilmasa avtomatik tanlanadi** |
 
-Javob: `{ "amount": int, "card_id": int, "transaction_id": string }` — `amount` band bo'lmagan summa (carta bo'yicha increment qilingan).
+`card_id` berilmasa, dastur **eng kam yuklangan** cartani (hozir active transactioni
+eng kam) avtomatik tanlaydi — bu summa farqini (drift) minimallashtiradi.
+
+Javob: `{ "amount": int, "card_id": int, "transaction_id": string }` — `card_id` aslida
+ishlatilgan carta, `amount` band bo'lmagan summa (carta bo'yicha increment qilingan).
 
 ### Obyekt sxemalari
 
@@ -201,7 +206,9 @@ curl -X POST http://<host>:8080/api/register \
   -d '{"name":"Ism Familiya","email":"pochta@example.com"}'
 ```
 
-> `name` majburiy; `email` yoki `phone` dan kamida bittasi majburiy. Javobda doimiy `token` qaytadi.
+> `name` majburiy; `email` yoki `phone` dan kamida bittasi majburiy. `password`
+> ixtiyoriy — berilsa keyin `login` qila olasiz, berilmasa faqat token bilan
+> kirasiz. Javobda doimiy `token` qaytadi.
 
 ### Webhook sozlash
 
@@ -248,9 +255,15 @@ curl -X POST http://<host>:8080/api/cards \
 ### Transaction yaratish
 
 ```bash
+# card_id bilan (aniq carta):
 curl -X POST http://<host>:8080/api/transactions \
   -H "Authorization: Bearer <token>" \
   -d '{"card_id":1,"amount":20000}'
+
+# card_id'siz (eng kam yuklangan carta avtomatik tanlanadi):
+curl -X POST http://<host>:8080/api/transactions \
+  -H "Authorization: Bearer <token>" \
+  -d '{"amount":20000}'
 ```
 
 ```json
@@ -286,8 +299,8 @@ Har bir amalni **ikki xil** ishlatish mumkin: interaktiv menu (TUI) yoki
 to'g'ridan-to'g'ri subcommand (skript/avtomatlashtirish uchun qulay):
 
 ```bash
-paycue-cli register --name "Ism" --email pochta@example.com --password "parol123"
-paycue-cli login --login pochta@example.com --password "parol123"   # boshqa qurilmada token olish
+paycue-cli register --name "Ism" --email pochta@example.com [--password "parol123"]
+paycue-cli login --login pochta@example.com --password "parol123"   # parol bilan ro'yxatdan o'tgan bo'lsa
 paycue-cli webhook                              # joriy webhookni ko'rish
 paycue-cli webhook --url https://example.com/hook   # webhook sozlash
 paycue-cli telegram connect --phone +99890...   # interaktiv: kod va 2FA ni so'raydi
@@ -297,7 +310,8 @@ paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
 paycue-cli telegram list
 paycue-cli card add --account 1 --last4 7159 --label Asosiy
 paycue-cli card list
-paycue-cli transaction create --card 1 --amount 20000
+paycue-cli transaction create --amount 20000            # carta avtomatik tanlanadi
+paycue-cli transaction create --card 1 --amount 20000   # aniq carta
 ```
 
 ### Bir nechta account (profillar)

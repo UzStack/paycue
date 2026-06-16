@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.4.0"
+const VERSION = "2.5.0"
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----
@@ -222,8 +222,8 @@ Profil (bir nechta account):
   profile remove NAME             Profilni o'chirish
 
 Buyruqlar:
-  register --name NAME [--email E] [--phone P] --password PW [--profile NAME]
-                                  Ro'yxatdan o'tish (tokenni profilga saqlaydi)
+  register --name NAME [--email E] [--phone P] [--password PW] [--profile NAME]
+                                  Ro'yxatdan o'tish (parol ixtiyoriy; tokenni profilga saqlaydi)
   login --login EMAIL|PHONE --password PW [--profile NAME]
                                   Parol bilan kirish (tokenni profilga saqlaydi)
   webhook [--url URL]             URL bo'lsa sozlaydi, bo'lmasa joriysini ko'rsatadi
@@ -233,7 +233,7 @@ Buyruqlar:
   telegram list
   card add --account ID --last4 7159 [--label L]
   card list
-  transaction create --card ID --amount 20000
+  transaction create --amount 20000 [--card ID]   (card berilmasa avtomatik tanlanadi)
   version`)
 }
 

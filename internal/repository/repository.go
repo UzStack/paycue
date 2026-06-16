@@ -219,6 +219,27 @@ func CardOwner(db *sql.DB, cardID int64) (int64, error) {
 	return userID, err
 }
 
+// PickLeastLoadedCard user cartalari ichidan hozir active transactioni eng kam
+// bo'lganini tanlaydi (summa farqini minimallashtirish uchun). Tenglikda kichik id.
+func PickLeastLoadedCard(db *sql.DB, userID int64, timeoutMins int) (int64, error) {
+	var cardID int64
+	err := db.QueryRow(`
+		SELECT c.id
+		FROM cards c
+		JOIN telegram_accounts t ON t.id = c.telegram_account_id
+		LEFT JOIN transactions tr
+			ON tr.card_id = c.id AND tr.status = 1
+			AND tr.created_at BETWEEN datetime('now', ?) AND datetime('now')
+		WHERE t.user_id = ?
+		GROUP BY c.id
+		ORDER BY COUNT(tr.id) ASC, c.id ASC
+		LIMIT 1`, minutesArg(timeoutMins), userID).Scan(&cardID)
+	if err != nil {
+		return 0, err
+	}
+	return cardID, nil
+}
+
 // GetCardByLast4 muayyan telegram account bo'yicha oxirgi 4 raqamga mos cartani topadi.
 func GetCardByLast4(db *sql.DB, telegramAccountID int64, last4 string) (*domain.Card, error) {
 	var c domain.Card

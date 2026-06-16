@@ -116,7 +116,7 @@ func tuiRegister(a *app) {
 	}
 	email := ask("Email (ixtiyoriy)")
 	phone := ask("Telefon (ixtiyoriy)")
-	password := askPassword("Parol (kamida 6 belgi)")
+	password := askPassword("Parol (ixtiyoriy, bo'sh=parolsiz; berilsa ≥6 belgi)")
 	profName := ask("Saqlanadigan profil nomi (bo'sh=default)")
 	if profName == "" {
 		profName = "default"
@@ -365,7 +365,7 @@ func tuiCards(a *app) {
 }
 
 func tuiTransaction(a *app) {
-	card, _ := strconv.ParseInt(ask("card_id"), 10, 64)
+	card, _ := strconv.ParseInt(ask("card_id (bo'sh = avtomatik eng kam yuklangan)"), 10, 64)
 	amountStr, ok := askRequired("Summa (amount)")
 	if !ok {
 		return
