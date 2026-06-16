@@ -16,15 +16,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
 
-      - name: Build for Linux (amd64)
+      - name: Build binaries
         run: |
-          GOOS=linux GOARCH=amd64 go build -o bin/paycue-linux-amd64 ./cmd
-
-      - name: Build for Linux (arm64)
-        run: |
-          GOOS=linux GOARCH=arm64 go build -o bin/paycue-linux-arm64 ./cmd
+          for arch in amd64 arm64; do
+            GOOS=linux GOARCH=$arch go build -o bin/paycue-linux-$arch ./cmd/paycue
+            GOOS=linux GOARCH=$arch go build -o bin/paycue-cli-linux-$arch ./cmd/paycue-cli
+          done
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -32,4 +31,3 @@ jobs:
           files: bin/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

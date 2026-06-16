@@ -1,229 +1,175 @@
-# Paycue docs
+# Paycue
 
-Assalomu Alaykum dasturdan foydalanishdan avval bularni o’qishingiz kerak loyiha qanday ishlaydi va qachon ishlatishingiz kerakligi haqida
+Paycue — to'lovlarni avtomatlashtirish uchun open source **SaaS** dastur. To'lov
+tizimlariga integratsiya qilmasdan, Humo kartangizga tushgan to'lovlarni Telegram
+orqali aniqlab, sizning API'ngizga `webhook` yuboradi.
 
-Loyiha nomi paycue to’lovlarni avtomatlashtirish uchun open source dastur. Bu dastur yordamida siz to’lov tizimlariga integratsiya qilmasdan to’lovlarni avtomatlashtirishingiz mumkun.
+Bitta server bir nechta foydalanuvchiga (multi-tenant) xizmat qiladi. Har bir
+foydalanuvchi API orqali ro'yxatdan o'tadi, o'z Telegram accountini ulaydi,
+cartalarini qo'shadi va webhook manzilini sozlaydi.
 
-`Dasturni kimlar ishlatishi kerak?` agar siz yuridik shaxs bo’lmasangiz lekin to’lovlarni avtomatlashtirmoqchi bo’lsangiz va foydalanuvchilaringiz ko’p bo’lmasa 10 ming dan kam bo’lsa bu dastur aynan siz uchun 
+> Savollar bo'lsa: [@Azamov_Samandar](https://t.me/Azamov_Samandar)
 
-`Loyiha qanday ishlaydi?` yangi to’lov yaratish uchun yangi transaction yaratasiz masalan sizga `10 ming` so’m to’lov kerak 10 ming `amount` yuborasiz keyin dastur sizga avtomatik hozir active bo’lmagan summada amount qaytaradi masalan `1025 so’m` foydalanuvchidan shuncha pul to’lashini so’raysiz. va agrda sizning kartangizga berilgan summada pul tushsa dastur sizga xabar beradi api `webhook` yordamida
+## Loyiha qanday ishlaydi?
 
-> Dasturdan foydalanishda savollaringiz bo’lsa telegram orqali [@Azamov_Samandar](https://t.me/Azamov_Samandar) ga yozishingiz mumkun
-> 
+1. Foydalanuvchi **ro'yxatdan o'tadi** → doimiy `token` oladi (tasdiq talab qilinmaydi).
+2. **Telegram account** ulaydi (API orqali: telefon → SMS kod → kerak bo'lsa 2FA parol).
+   Ulangach dastur avtomatik `@HUMOcardbot`ni topadi, `/start` bosilmagan bo'lsa bosadi va chatni kuzatadi.
+3. **Carta** qo'shadi — cartaning oxirgi 4 raqami (`*7159`) bo'yicha.
+4. **Webhook** URL sozlaydi.
+5. To'lov kerak bo'lganda **transaction** yaratadi: `amount` + `card_id` yuboradi,
+   dastur o'sha carta uchun hozir band bo'lmagan summani qaytaradi (masalan `20001`).
+   Increment **har carta bo'yicha alohida** hisoblanadi.
+6. Kartaga shu summada pul tushganda dastur webhook orqali xabar beradi.
 
-### Kerakli narsalar
+## Komponentlar
+
+- **`paycue`** — API server (Telegram watcher, worker, webhook).
+- **`paycue-cli`** — API client (terminal). To'liq API orqali ishlaydi, dastur ichiga kirmaydi.
+
+## Kerakli narsalar
 
 1. Telegram account
-2. Humo telegram bot
+2. Humo telegram bot ([@HUMOcardbot](https://t.me/HUMOcardbot))
 3. Humo plastik kartasi
 4. Server
+5. Telegram `APP_ID` va `APP_HASH` ([my.telegram.org](https://my.telegram.org))
 
-`Nega Telegram account va humo kerak?` chunki dastur Humoning rasmiy botidan malumot olib ishlaydi. Humo kartaga pul tushganda humo telegram bot orqali xabar yuboradi dastur esa buni olib qayta ishlaydi.
-
-> O’qishingiz shart: Telegram account ochilgan no’merda plastik karta sms xabarnoma yoqilgan bo’lishi shart
-> 
-
-# Quickstart
-
-### O’rnatish
-
-Githubdan oxirgi releaseni yuklab oling [download](https://github.com/UzStack/paycoe) `<arch>` o’rniga serveringizdagi arch yoziladi odatda `amd`
+## Tez o'rnatish
 
 ```bash
-curl -o paycue -L https://github.com/UzStack/paycoe/releases/download/<version>/paycue-linux-<arch>
+curl -fsSL https://raw.githubusercontent.com/UzStack/paycue/main/install.sh | sudo bash
 ```
 
-dastur uchun papka yaratishimiz kerak `/opt` papkasiga yaratishni maslahat beraman
+`install.sh`:
+- o'rnatilmagan bo'lsa — `APP_ID`/`APP_HASH` so'raydi, `.env` tayyorlaydi, oxirgi
+  releasedan binarylarni yuklaydi, systemd servisini sozlaydi, `paycue-cli`ni o'rnatadi;
+- o'rnatilgan bo'lsa — binarylarni oxirgi releasega yangilab, servisni qayta ishga tushiradi.
 
-```bash
-mkdir -p /opt/paycue
-```
+## Qo'lda ishga tushirish
 
-va dasturni shu papkaga ko’chiring
-
-```bash
-mv ./paycue /opt/paycue
-```
-
-fayil uchun kerakli permissionlarni beramiz
-
-```bash
-sudo chmod +x ./paycue
-```
-
-endi shu papkada `.env` fayil yaratishimiz kerak api hash va api keyni [my.telegram.org](http://my.telegram.org) saytidan olishingiz mumkun 
+`.env` fayl (namuna `.env.example`da):
 
 ```bash
 APP_ID=<app_id>
 APP_HASH=<app_hash>
-TG_PHONE=<you_phone_number>
-SESSION_DIR="sessions"
+PORT=8080
+DB_PATH=./db.sqlite3
+SESSION_DIR=sessions
 WORKERS=10
-WEBHOOK_URL=http://127.0.0.1:10800/health/
-WATCH_ID=856254490
-PORT=10800
-DEBUG=true
-LIMIT=100
-API_KEY=<api_key>
+TRANSACTION_TIMEOUT=30
+DEBUG=false
 ```
-
-> Eslatma: .env fayildagi `WEBHOOK_URL` juda muhum to’lov bajarilgandan keyin shu callback urlga malumotlarni yuboradi qaysi transaction bajarilganligi haqida
-> 
-
-> Eslatma: `API_KEY` — transaction yaratish endpointini himoyalaydigan maxfiy kalit. Har bir so’rovda `X-API-Key` header orqali yuboriladi va dastur webhook yuborganda ham shu kalitni `X-API-Key` headerda qaytaradi. Uzun va tasodifiy qiymat qo’ying (masalan `openssl rand -hex 32`).
-> 
-
-### Botni sozlash
-
-Keyingi navbat telegram botni sozlashimiz kerak [@HUMOcardbot](https://t.me/HUMOcardbot) ga kiring va botdagi ko’rsatmalarga amal qilib ro’yhatdan o’ting.
-
-> To’lovlar uchun ishlatmoqchi bo’lgan kartangiz `💳 Kartalarni boshqarish` bo’limida mavjud kanligini tekshiring
-> 
-
-### Telegram accountni ulash
-
-Telegram accountni dasturga ulash uchun bu commanddan foydalaning. Ko’rsatmalarga amal qiling
 
 ```bash
-./paycue --telegram
+make build          # bin/paycue va bin/paycue-cli
+./bin/paycue        # serverni ishga tushirish
 ```
 
-### systemdni sozlash
+## API
 
-Dastur doimiy ishlashi uchun systemd yordamida ishga tushuramiz 
+Barcha himoyalangan endpointlar `Authorization: Bearer <token>` headerini talab qiladi.
 
-yangi fayil yarating `/etc/systemd/system/paycue.service` 
+### Ro'yxatdan o'tish (public)
 
 ```bash
-[Unit]
-Description="paycue service"
-After=network.target
-
-[Service]
-User=root
-Group=root
-Type=simple
-Restart=on-failure
-RestartSec=5s
-ExecStart=/opt/paycue/paycue
-WorkingDirectory=/opt/paycue/
-
-[Install]
-WantedBy=multi-user.target
+curl -X POST http://<host>:8080/api/register \
+  -H 'content-type: application/json' \
+  -d '{"name":"Ism Familiya","email":"pochta@example.com"}'
 ```
 
-deyarli tayyor endi systemd ni  ishga tushursak bo’ldi
+> `name` majburiy; `email` yoki `phone` dan kamida bittasi majburiy. Javobda doimiy `token` qaytadi.
+
+### Webhook sozlash
 
 ```bash
-sudo systemctl enable --now paycue
+curl -X POST http://<host>:8080/api/webhook \
+  -H "Authorization: Bearer <token>" \
+  -d '{"url":"https://example.com/hook"}'
 ```
 
-dastur ishlayotganini tekshiring
+Javobda `secret` qaytadi — dastur webhook yuborganda uni `X-API-Key` headerda
+yuboradi. Callback URL'ingizda shu kalitni tekshirib, so'rov haqiqatan paycue'dan
+kelganini bilib oling.
+
+### Telegram account ulash
 
 ```bash
-sudo systemctl status paycue
+# 1) kod yuborish
+curl -X POST http://<host>:8080/api/telegram/send-code \
+  -H "Authorization: Bearer <token>" -d '{"phone":"+99890..."}'
+# -> { "telegram_account_id": 1 }
+
+# 2) kodni tasdiqlash (2FA bo'lsa password qo'shing)
+curl -X POST http://<host>:8080/api/telegram/verify \
+  -H "Authorization: Bearer <token>" \
+  -d '{"telegram_account_id":1,"code":"12345"}'
+# 2FA kerak bo'lsa javob: { "need_password": true } -> password bilan qayta yuboring
 ```
 
-# Integratsiya
+`GET /api/telegram` — accountlar ro'yxati.
+
+### Carta qo'shish
+
+```bash
+curl -X POST http://<host>:8080/api/cards \
+  -H "Authorization: Bearer <token>" \
+  -d '{"telegram_account_id":1,"last4":"7159","label":"Asosiy"}'
+```
+
+`GET /api/cards` — cartalar ro'yxati.
 
 ### Transaction yaratish
 
-Request example
+```bash
+curl -X POST http://<host>:8080/api/transactions \
+  -H "Authorization: Bearer <token>" \
+  -d '{"card_id":1,"amount":20000}'
+```
+
+```json
+{ "status": true, "data": { "amount": 20001, "card_id": 1, "transaction_id": "<uuid>" } }
+```
+
+> `amount` — siz xohlagan summa; javobdagi `amount` — foydalanuvchidan so'raladigan
+> (band bo'lmagan) summa. Increment har carta bo'yicha alohida hisoblanadi.
+
+### Webhook payload
+
+Kartaga to'lov tushganda yoki transaction bekor qilinganda dastur sizning URL'ingizga POST yuboradi:
+
+```json
+{ "action": "confirm", "amount": 20001, "card_id": 1, "transaction_id": "<uuid>" }
+```
+
+`action`: `confirm` (to'lov tushdi) yoki `cancel` (muddati o'tdi). Header'da
+`X-API-Key: <secret>` bo'ladi. Callback URL `{ "ok": true }` va `200` qaytarishi kerak,
+aks holda dastur `3 marta` qayta urinadi.
+
+## CLI
 
 ```bash
-curl --request POST \
-  --url http://<host>:10800/create/transaction/ \
-  --header 'X-API-Key: <api_key>' \
-  --header 'content-type: application/json' \
-  --data '{
-  "amount": 20000
-}'
+paycue-cli register --name "Ism" --email pochta@example.com   # token saqlanadi
+paycue-cli webhook --url https://example.com/hook
+paycue-cli telegram send-code --phone +99890...
+paycue-cli telegram verify --account 1 --code 12345 [--password 2FA]
+paycue-cli telegram list
+paycue-cli card add --account 1 --last4 7159 --label Asosiy
+paycue-cli card list
+paycue-cli transaction create --card 1 --amount 20000
 ```
 
-> Diqqat: `/create/transaction/` endpointi `API_KEY` bilan himoyalangan. Har bir so’rovda `.env` dagi `API_KEY` qiymatini `X-API-Key` headerda yuborishingiz shart, aks holda `401 Unauthorized` qaytadi.
+Sozlash: `--api` (yoki `PAYCUE_API`), `--token` (yoki `PAYCUE_TOKEN`, yoki
+`~/.config/paycue/token` — `register`dan keyin avtomatik saqlanadi).
 
-Post data
+## Muhim ma'lumotlar
 
-| amount | To’lov miqdori |
-| --- | --- |
+- Transaction `TRANSACTION_TIMEOUT` daqiqa (default 30) active qoladi, keyin avtomatik bekor qilinadi.
+- Har Telegram account uchun alohida session `SESSION_DIR`da saqlanadi.
+- Ko'p transactionda summa farqi o'sib boradi; buni kamaytirish uchun bir nechta carta/account ishlating.
 
-Success response misol
+## Savollar?
 
-```json
-{
-  "status": true,
-  "data": {
-    "amount": 20000,
-    "transaction_id": "622ea789-5b4c-4e6a-a76b-415ac144eb34"
-  }
-}
-```
-
-Error response misol
-
-```json
-{
-  "status": false,
-  "data": {
-    "detail": "Amount must be less than 100"
-  }
-}
-```
-
-`X-API-Key` xato yoki yuborilmagan bo’lsa `401` response misol
-
-```json
-{
-  "status": false,
-  "data": {
-    "detail": "Invalid or missing X-API-Key"
-  }
-}
-```
-
-### Webhook
-
-To’lov bajarilganda yoki bekor qilinganda dastur siz kiritgan callback urlga malumotlarni yuboradi. Ikkita asosiy  action mavjud cancel va confirm
-
-Dastur webhook so’rovini yuborganda `.env` dagi `API_KEY` qiymatini `X-API-Key` headerda yuboradi. Callback urlingizda shu headerni o’zingizdagi kalit bilan solishtirib, so’rov haqiqatan paycue’dan kelganini tekshiring — mos kelmasa so’rovni rad eting.
-
-```json
-# to'lov bajarilganda
-{
-	"action": "confirm",
-	"amount": 10001,
-	"transaction_id": "<uuid4>"
-}
-```
-
-```json
-# to'lov bekor qilinganda
-{
-	"action":"cancel",
-	"amount": 10001,
-	"transaction_id": "<uuid4>"
-}
-```
-
-Ikkala actionda ham callback url `200 status code` qaytarishi kerak json example
-
-```json
-{
-	"ok": true
-}
-```
-
-### Qo’shimcha malumot
-
-- callback urldan success javob kelmasa dastur `3 marotaba` qayta urinadi va baribir javob success bo’lmasa transactionni yopadi.
-
-# Muhum malumotlar
-
-- To’lovdan avval transaction yaratasiz va dastur qaytargan miqdorda to’lov qilishini so’raysiz
-- Transaction 30 daqiqa active qoladi keyin bekor qilinadi 30 daqiqadan keyingi to’langan to’lovlar tasdiqlanmaydi.
-- Dastur ko’plab transactionlar bilan ishlay oladi lekin to’lov summasi farqi kattalshib ketishi mumkun masalan `10 ming` so’mlik `1000 ta` transactiondan keyin to’lov `11 ming` bo’lib ketadi buni oldini olish uchun bir nechta kartalardan foydalanishingiz mumkun dasturni bir nechta varintlarini turli accountlarga ulaysiz. (`buni hozirda qo’lda so’zlashingiz kerak  keyingi yangilanishlarda buni avtomatlashtiramiz`)
-
-# Savollar?
-
-- `Telegram accountni dasturga ulash hafsizmi?:` Albatta bu hafsiz chunki dastur open source ko’dlarini istalgan odam tekshirib chiqishi mumkun va malumotlar o’z serveringizda qoladi.
-- `Men ham dasturni rivojlantirishga yordam bera olamanmi?:` Albatta biz yordamingizdan doim hursand bo’lamiz dasturni fork qilib oling va yangilanishlarni pull request yaratishingiz mumkun biz albatta ko’rib chiqmiz.
+- `Telegram accountni ulash xavfsizmi?` — Ha, dastur open source, ma'lumotlar o'z
+  serveringizda qoladi, session fayllari sizda saqlanadi.
+- `Yordam bera olamanmi?` — Albatta, fork qiling va pull request yuboring.

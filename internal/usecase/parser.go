@@ -13,12 +13,15 @@ type TopUpResult struct {
 	Type         string // "top_up"
 	AmountRaw    string // "3.300.000,00"
 	AmountInt    int64  // 3300000 (butun pul birligi sifatida)
+	Last4        string // "7159" — cartaning oxirgi 4 raqami
 	Currency     string // "UZS"
-	AmountPretty string // qayta formatlashni xohlasa alohida qilishingiz mumkin
+	AmountPretty string
 }
 
 func toNumber(amount string, log *zap.Logger) (int64, bool) {
-	normalized := strings.ReplaceAll(strings.ReplaceAll(amount, ".", ""), ",", ".")
+	// Minglik ajratuvchilar (nuqta yoki bo'shliq) olib tashlanadi,
+	// vergul o'nlik nuqtaga aylantiriladi: "3 300 000,00" / "1.010,00" -> butun son.
+	normalized := strings.NewReplacer(".", "", " ", "", ",", ".").Replace(amount)
 	if res, err := strconv.ParseFloat(normalized, 64); err == nil {
 		return int64(res), true
 	}
@@ -26,10 +29,13 @@ func toNumber(amount string, log *zap.Logger) (int64, bool) {
 }
 
 var (
-	// To['’`]?ldirish so'zini izlash (case-insensitive).
-	reTopUpWord = regexp.MustCompile(`(?i)To['’` + "`" + `]?ldirish`)
-	// ➕ 3.300.000,00 UZS
-	reAmount = regexp.MustCompile(`➕\s*([\d\.]+,\d{2})\s*([A-Z]{3})`)
+	// To'ldirish so'zini izlash (case-insensitive). Apostrof turli xil
+	// bo'lishi mumkin: ' ’ ‘ ` ʻ ´ yoki umuman bo'lmasligi ham mumkin.
+	reTopUpWord = regexp.MustCompile(`(?i)To['’‘` + "`" + `ʻ´]?ldirish`)
+	// ➕ 3.300.000,00 UZS  yoki  ➕ 3 300 000,00 UZS
+	reAmount = regexp.MustCompile(`➕\s*([\d.\s]+,\d{2})\s*([A-Z]{3})`)
+	// 💳 HUMOCARD *7159  (oxirgi 4 raqam)
+	reCard = regexp.MustCompile(`\*\s*(\d{4})`)
 )
 
 // ParseTopUp matndan To'ldirish operatsiyasi bo'lsa ajratib qaytaradi.
@@ -50,13 +56,19 @@ func ParseTopUp(text string, log *zap.Logger) *TopUpResult {
 
 	val, ok := toNumber(amountStr, log)
 	if !ok {
-		// Agar bu yerga decimal qo'shmoqchi bo'lsangiz shopspring/decimal ni ulanishingiz mumkin.
+		return nil
+	}
+
+	var last4 string
+	if c := reCard.FindStringSubmatch(cleaned); len(c) == 2 {
+		last4 = c[1]
 	}
 
 	return &TopUpResult{
 		Type:         "top_up",
 		AmountRaw:    amountStr,
 		AmountInt:    val,
+		Last4:        last4,
 		Currency:     currency,
 		AmountPretty: amountStr + " " + currency,
 	}

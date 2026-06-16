@@ -3,79 +3,256 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strings"
 
+	"github.com/UzStack/paycue/internal/auth"
 	"github.com/UzStack/paycue/internal/config"
 	"github.com/UzStack/paycue/internal/domain"
+	"github.com/UzStack/paycue/internal/http/middleware"
 	"github.com/UzStack/paycue/internal/repository"
+	"github.com/UzStack/paycue/internal/telegram"
+	"github.com/UzStack/paycue/internal/usecase"
 	"go.uber.org/zap"
 )
 
 type Handler struct {
-	DB    *sql.DB
-	Log   *zap.Logger
-	Tasks chan domain.Task
-	Cfg   *config.Config
+	DB  *sql.DB
+	Log *zap.Logger
+	Cfg *config.Config
+	TG  *telegram.Manager
 }
 
-func NewHandler(db *sql.DB, log *zap.Logger, tasks chan domain.Task, cfg *config.Config) *Handler {
-	return &Handler{
-		DB:    db,
-		Log:   log,
-		Tasks: tasks,
-		Cfg:   cfg,
+func NewHandler(db *sql.DB, log *zap.Logger, cfg *config.Config, tg *telegram.Manager) *Handler {
+	return &Handler{DB: db, Log: log, Cfg: cfg, TG: tg}
+}
+
+// ---- helpers ----
+
+func writeJSON(w http.ResponseWriter, code int, status bool, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(domain.Response{Status: status, Data: data})
+}
+
+func ok(w http.ResponseWriter, data any) { writeJSON(w, http.StatusOK, true, data) }
+
+func fail(w http.ResponseWriter, code int, detail string) {
+	writeJSON(w, code, false, domain.Detail{Detail: detail})
+}
+
+func decode(r *http.Request, v any) error {
+	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// ---- Health ----
+
+func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+}
+
+// ---- Register (public) ----
+
+func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Name  string `json:"name"`
+		Email string `json:"email"`
+		Phone string `json:"phone"`
 	}
-}
-
-func (h *Handler) HealthHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{
-		"ok": true,
+	if err := decode(r, &in); err != nil {
+		fail(w, http.StatusBadRequest, "noto'g'ri json")
+		return
+	}
+	in.Name = strings.TrimSpace(in.Name)
+	if in.Name == "" {
+		fail(w, http.StatusBadRequest, "name majburiy")
+		return
+	}
+	if strings.TrimSpace(in.Email) == "" && strings.TrimSpace(in.Phone) == "" {
+		fail(w, http.StatusBadRequest, "email yoki phone dan kamida bittasi majburiy")
+		return
+	}
+	token, err := auth.GenerateToken()
+	if err != nil {
+		fail(w, http.StatusInternalServerError, "token yaratilmadi")
+		return
+	}
+	user, err := repository.CreateUser(h.DB, in.Name, in.Email, in.Phone, token)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{
+		"id":    user.ID,
+		"name":  user.Name,
+		"token": user.Token,
 	})
 }
 
-func (h *Handler) HandlerHome(w http.ResponseWriter, r *http.Request) {
-	var data struct {
+// ---- Webhook sozlash ----
+
+func (h *Handler) SetWebhook(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	var in struct {
+		URL string `json:"url"`
+	}
+	if err := decode(r, &in); err != nil || strings.TrimSpace(in.URL) == "" {
+		fail(w, http.StatusBadRequest, "url majburiy")
+		return
+	}
+	// Mavjud secretni saqlaymiz, bo'lmasa yangisini yaratamiz.
+	_, secret, _ := repository.GetWebhook(h.DB, user.ID)
+	if secret == "" {
+		secret, _ = auth.GenerateSecret()
+	}
+	if err := repository.SetWebhook(h.DB, user.ID, in.URL, secret); err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{"url": in.URL, "secret": secret})
+}
+
+// ---- Telegram ----
+
+func (h *Handler) TelegramSendCode(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	var in struct {
+		Phone string `json:"phone"`
+	}
+	if err := decode(r, &in); err != nil || strings.TrimSpace(in.Phone) == "" {
+		fail(w, http.StatusBadRequest, "phone majburiy")
+		return
+	}
+	accountID, err := repository.CreateTelegramAccount(h.DB, user.ID, in.Phone)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	account, err := repository.GetTelegramAccount(h.DB, accountID)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := h.TG.StartLogin(accountID, *account); err != nil {
+		fail(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	ok(w, map[string]any{
+		"telegram_account_id": accountID,
+		"message":             "Tasdiqlash kodi yuborildi. /api/telegram/verify orqali kodni yuboring.",
+	})
+}
+
+func (h *Handler) TelegramVerify(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	var in struct {
+		TelegramAccountID int64  `json:"telegram_account_id"`
+		Code              string `json:"code"`
+		Password          string `json:"password"`
+	}
+	if err := decode(r, &in); err != nil || in.TelegramAccountID == 0 {
+		fail(w, http.StatusBadRequest, "telegram_account_id va code majburiy")
+		return
+	}
+	account, err := repository.GetTelegramAccount(h.DB, in.TelegramAccountID)
+	if err != nil {
+		fail(w, http.StatusNotFound, "account topilmadi")
+		return
+	}
+	if account.UserID != user.ID {
+		fail(w, http.StatusForbidden, "bu account sizga tegishli emas")
+		return
+	}
+	need2FA, err := h.TG.SubmitCode(in.TelegramAccountID, in.Code, in.Password)
+	if err != nil {
+		fail(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if need2FA {
+		ok(w, map[string]any{
+			"need_password": true,
+			"message":       "2FA yoqilgan. password bilan qayta /api/telegram/verify yuboring.",
+		})
+		return
+	}
+	ok(w, map[string]any{
+		"telegram_account_id": in.TelegramAccountID,
+		"status":              "active",
+		"message":             "Telegram account muvaffaqiyatli ulandi.",
+	})
+}
+
+func (h *Handler) TelegramList(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	list, err := repository.ListTelegramAccounts(h.DB, user.ID)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, list)
+}
+
+// ---- Cards ----
+
+func (h *Handler) CardCreate(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	var in struct {
+		TelegramAccountID int64  `json:"telegram_account_id"`
+		Last4             string `json:"last4"`
+		Label             string `json:"label"`
+	}
+	if err := decode(r, &in); err != nil || in.TelegramAccountID == 0 || len(in.Last4) != 4 {
+		fail(w, http.StatusBadRequest, "telegram_account_id va 4 xonali last4 majburiy")
+		return
+	}
+	account, err := repository.GetTelegramAccount(h.DB, in.TelegramAccountID)
+	if err != nil || account.UserID != user.ID {
+		fail(w, http.StatusForbidden, "telegram account sizga tegishli emas")
+		return
+	}
+	card, err := repository.CreateCard(h.DB, in.TelegramAccountID, in.Last4, in.Label)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, card)
+}
+
+func (h *Handler) CardList(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	list, err := repository.ListCardsByUser(h.DB, user.ID)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, list)
+}
+
+// ---- Transactions ----
+
+func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	var in struct {
+		CardID int64 `json:"card_id"`
 		Amount int64 `json:"amount"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		fmt.Fprintln(w, err.Error())
+	if err := decode(r, &in); err != nil || in.CardID == 0 || in.Amount <= 0 {
+		fail(w, http.StatusBadRequest, "card_id va musbat amount majburiy")
+		return
 	}
-	var transaction_id string
-	amount := data.Amount
-	for {
-		if amount-data.Amount > h.Cfg.Limit {
-			json.NewEncoder(w).Encode(domain.Response{
-				Status: false,
-				Data: domain.Detail{
-					Detail: "Amount must be less than 100",
-				},
-			})
-			return
-		}
-		status, err := repository.CheckTransaction(h.DB, amount)
-		if err != nil {
-			h.Log.Error(err.Error())
-			amount += 1
-			continue
-		}
-		if status {
-			transaction_id, err = repository.CreateTransaction(h.DB, amount)
-			if err != nil {
-				fmt.Fprintln(w, err.Error())
-			}
-			break
-		}
-		amount += 1
+	owner, err := repository.CardOwner(h.DB, in.CardID)
+	if err != nil || owner != user.ID {
+		fail(w, http.StatusForbidden, "carta sizga tegishli emas")
+		return
 	}
-
-	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(domain.Response{
-		Status: true,
-		Data: struct {
-			Amount        int64  `json:"amount"`
-			TransactionID string `json:"transaction_id"`
-		}{Amount: amount, TransactionID: transaction_id},
+	amount, transID, err := usecase.CreateTransactionForCard(h.DB, in.CardID, in.Amount, h.Cfg.TimeoutMins)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{
+		"amount":         amount,
+		"card_id":        in.CardID,
+		"transaction_id": transID,
 	})
 }

@@ -7,61 +7,65 @@ import (
 )
 
 type Config struct {
-	Workers    int
-	WebhookURL string
-	Port       string
-	WatchID    int64
-	Limit      int64
-	APIKey     string
+	AppID       int
+	AppHash     string
+	Port        string
+	DBPath      string
+	SessionDir  string
+	Workers     int
+	TimeoutMins int
+	Debug       bool
 }
 
 func NewConfig() (*Config, error) {
-	workers_str, err := Getenv("WORKERS", "10", false)
+	appIDStr, err := Getenv("APP_ID", "", true)
 	if err != nil {
 		return nil, err
 	}
-	workers, err := strconv.Atoi(workers_str)
+	appID, err := strconv.Atoi(appIDStr)
+	if err != nil {
+		return nil, errors.New("APP_ID butun son bo'lishi kerak")
+	}
+
+	appHash, err := Getenv("APP_HASH", "", true)
 	if err != nil {
 		return nil, err
 	}
 
-	watchStr, err := Getenv("WATCH_ID", "", true)
+	workersStr, err := Getenv("WORKERS", "10", false)
 	if err != nil {
 		return nil, err
 	}
-	watchID, err := strconv.ParseInt(watchStr, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	limitStr, err := Getenv("LIMIT", "100", false)
-	if err != nil {
-		return nil, err
-	}
-	limit, err := strconv.ParseInt(limitStr, 10, 64)
+	workers, err := strconv.Atoi(workersStr)
 	if err != nil {
 		return nil, err
 	}
 
-	apiKey, err := Getenv("API_KEY", "", true)
+	timeoutStr, err := Getenv("TRANSACTION_TIMEOUT", "30", false)
+	if err != nil {
+		return nil, err
+	}
+	timeout, err := strconv.Atoi(timeoutStr)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Config{
-		Workers:    workers,
-		WebhookURL: GetenvValue("WEBHOOK_URL", ""),
-		Port:       GetenvValue("PORT", "8080"),
-		WatchID:    watchID,
-		Limit:      limit,
-		APIKey:     apiKey,
+		AppID:       appID,
+		AppHash:     appHash,
+		Port:        GetenvValue("PORT", "8080"),
+		DBPath:      GetenvValue("DB_PATH", "./db.sqlite3"),
+		SessionDir:  GetenvValue("SESSION_DIR", "sessions"),
+		Workers:     workers,
+		TimeoutMins: timeout,
+		Debug:       os.Getenv("DEBUG") == "true",
 	}, nil
 }
 
 func Getenv(key string, def string, is_required bool) (string, error) {
 	value := os.Getenv(key)
 	if is_required && value == "" {
-		return "", errors.New(key + "is not set .env")
+		return "", errors.New(key + " is not set .env")
 	}
 	if value == "" {
 		return def, nil
