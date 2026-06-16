@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const VERSION = "2.8.1"
+var VERSION = "dev" // build vaqtida ldflags orqali tag'dan to'ldiriladi
 const defaultAPIAddr = "http://127.0.0.1:8080"
 
 // ---- profil konfiguratsiyasi (bir nechta account) ----

@@ -25,14 +25,16 @@ jobs:
 
       - name: Build binaries
         run: |
+          # Versiya tag'dan olinadi (v2.9.0 -> 2.9.0) va ldflags orqali binarygа joylanadi.
+          VERSION="${GITHUB_REF_NAME#v}"
           # Server (paycue) — faqat linux (go-sqlite3 CGO; darwin cross-build qilinmaydi).
           for arch in amd64 arm64; do
-            GOOS=linux GOARCH=$arch go build -o bin/paycue-linux-$arch ./cmd/paycue
+            GOOS=linux GOARCH=$arch go build -ldflags "-X main.VERSION=$VERSION" -o bin/paycue-linux-$arch ./cmd/paycue
           done
           # CLI (paycue-cli) — toza Go, linux va macOS uchun cross-compile.
           for os in linux darwin; do
             for arch in amd64 arm64; do
-              GOOS=$os GOARCH=$arch go build -o bin/paycue-cli-$os-$arch ./cmd/paycue-cli
+              GOOS=$os GOARCH=$arch go build -ldflags "-X main.VERSION=$VERSION" -o bin/paycue-cli-$os-$arch ./cmd/paycue-cli
             done
           done
 

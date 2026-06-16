@@ -24,7 +24,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var VERSION = "2.8.1"
+var VERSION = "dev" // build vaqtida ldflags orqali tag'dan to'ldiriladi
 
 func author() {
 	fmt.Println("Fullname      Azamov Samandar")
