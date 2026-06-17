@@ -12,6 +12,7 @@ import Webhook from './pages/dashboard/Webhook'
 import CreateTransaction from './pages/dashboard/CreateTransaction'
 import Transactions from './pages/dashboard/Transactions'
 import WebhookLogs from './pages/dashboard/WebhookLogs'
+import AiIntegration from './pages/dashboard/AiIntegration'
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="webhook-logs" element={<WebhookLogs />} />
           <Route path="transaction" element={<CreateTransaction />} />
           <Route path="transactions" element={<Transactions />} />
+          <Route path="ai" element={<AiIntegration />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
