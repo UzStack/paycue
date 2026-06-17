@@ -37,6 +37,8 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 	mux.HandleFunc("DELETE /api/cards/{id}", auth(h.CardDelete))
 
 	mux.HandleFunc("POST /api/transactions", auth(h.TransactionCreate))
+	mux.HandleFunc("GET /api/transactions", auth(h.TransactionList))
+	mux.HandleFunc("DELETE /api/transactions/{id}", auth(h.TransactionDelete))
 
 	// Web UI (statik) — WEB_DIR sozlangan bo'lsa, SPA sifatida xizmat qiladi.
 	// /api/* va /health/ aniqroq pattern bo'lgani uchun ular ustun keladi.

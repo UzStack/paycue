@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -236,6 +237,8 @@ Buyruqlar:
   card list
   card delete --id ID
   transaction create --amount 20000 [--card ID]   (card berilmasa avtomatik tanlanadi)
+  transaction list                Tranzaksiyalar ro'yxati (holati bilan)
+  transaction delete --id ID
   version`)
 }
 
@@ -511,17 +514,94 @@ func cmdCard(c *client, args []string) error {
 }
 
 func cmdTransaction(c *client, args []string) error {
-	if len(args) == 0 || args[0] != "create" {
-		return fmt.Errorf("foydalanish: transaction create --card ID --amount N")
+	if len(args) == 0 {
+		return fmt.Errorf("subbuyruq kerak: create | list | delete")
 	}
-	fs := flag.NewFlagSet("create", flag.ExitOnError)
-	card := fs.Int64("card", 0, "card_id")
-	amount := fs.Int64("amount", 0, "summa")
-	fs.Parse(args[1:])
-	out, err := c.do("POST", "/api/transactions", map[string]any{"card_id": *card, "amount": *amount})
-	if err != nil {
-		return err
+	sub, rest := args[0], args[1:]
+	switch sub {
+	case "create":
+		fs := flag.NewFlagSet("create", flag.ExitOnError)
+		card := fs.Int64("card", 0, "card_id")
+		amount := fs.Int64("amount", 0, "summa")
+		fs.Parse(rest)
+		out, err := c.do("POST", "/api/transactions", map[string]any{"card_id": *card, "amount": *amount})
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
+		return nil
+	case "list":
+		out, err := c.do("GET", "/api/transactions", nil)
+		if err != nil {
+			return err
+		}
+		printTransactions(out["data"])
+		return nil
+	case "delete":
+		fs := flag.NewFlagSet("delete", flag.ExitOnError)
+		id := fs.Int64("id", 0, "transaction id")
+		fs.Parse(rest)
+		out, err := c.do("DELETE", fmt.Sprintf("/api/transactions/%d", *id), nil)
+		if err != nil {
+			return err
+		}
+		printJSON(out["data"])
+		return nil
 	}
-	printJSON(out["data"])
-	return nil
+	return fmt.Errorf("noma'lum subbuyruq: %s", sub)
+}
+
+// transactionStateLabel state kodini o'zbekcha yorliqqa aylantiradi.
+func transactionStateLabel(state string) string {
+	switch state {
+	case "active":
+		return "Aktiv"
+	case "confirmed":
+		return "Tasdiqlangan"
+	case "cancelled":
+		return "Bekor qilingan"
+	case "expired":
+		return "Muddati o'tgan"
+	default:
+		return state
+	}
+}
+
+// printTransactions transaction ro'yxatini jadval ko'rinishida chiqaradi.
+func printTransactions(data any) {
+	list, ok := data.([]any)
+	if !ok || len(list) == 0 {
+		fmt.Println("Tranzaksiya yo'q.")
+		return
+	}
+	fmt.Printf("%-5s %-12s %-22s %-16s %-16s\n", "ID", "SUMMA", "KARTA", "EGASI", "HOLAT")
+	for _, it := range list {
+		m, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		id := numStr(m["id"])
+		amount := numStr(m["amount"])
+		card, _ := m["card_number"].(string)
+		if card == "" {
+			if l4, ok := m["card_last4"].(string); ok {
+				card = "*" + l4
+			}
+		}
+		owner, _ := m["card_owner"].(string)
+		state, _ := m["state"].(string)
+		fmt.Printf("%-5s %-12s %-22s %-16s %-16s\n", id, amount, card, owner, transactionStateLabel(state))
+	}
+}
+
+// numStr JSON sonini (float64) toza string ko'rinishida qaytaradi.
+func numStr(v any) string {
+	switch n := v.(type) {
+	case float64:
+		return strconv.FormatInt(int64(n), 10)
+	case string:
+		return n
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }

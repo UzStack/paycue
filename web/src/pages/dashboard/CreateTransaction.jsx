@@ -150,9 +150,11 @@ export default function CreateTransaction() {
 
               {result.card && (
                 <>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-500">Karta</span>
-                    <span className="text-zinc-300 font-mono">*{result.card.last4}</span>
+                  <div className="flex items-center justify-between text-sm gap-3">
+                    <span className="text-zinc-500 shrink-0">Karta</span>
+                    <span className="text-zinc-300 font-mono text-right break-all">
+                      {result.card.number || `*${result.card.last4}`}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-zinc-500">Egasi</span>

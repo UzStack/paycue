@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"strconv"
+	"time"
 
 	"github.com/UzStack/paycue/internal/domain"
 	"github.com/google/uuid"
@@ -51,6 +52,7 @@ func InitTables(db *sql.DB) {
 			amount INTEGER NOT NULL,
 			status BOOLEAN DEFAULT 1,
 			webhook_status BOOLEAN DEFAULT 0,
+			action TEXT DEFAULT '',
 			transaction_id TEXT NOT NULL UNIQUE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
@@ -65,6 +67,7 @@ func InitTables(db *sql.DB) {
 	db.Exec("ALTER TABLE users ADD COLUMN password_hash TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE cards ADD COLUMN number TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE cards ADD COLUMN owner_name TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE transactions ADD COLUMN action TEXT DEFAULT ''")
 }
 
 // ---- Users ----
@@ -333,14 +336,82 @@ func GetOldTransactions(db *sql.DB, timeoutMins int) ([]domain.WebhookTask, erro
 	return list, nil
 }
 
-func ConfirmTransaction(db *sql.DB, transactionID string, webhookStatus bool) error {
-	_, err := db.Exec("UPDATE transactions SET status=0, webhook_status=? WHERE transaction_id=?", webhookStatus, transactionID)
+// ConfirmTransaction transactionni yopadi: status=0 qiladi, action (confirm|cancel)
+// va webhook yetkazilgani holatini saqlaydi.
+func ConfirmTransaction(db *sql.DB, transactionID, action string, webhookStatus bool) error {
+	_, err := db.Exec("UPDATE transactions SET status=0, action=?, webhook_status=? WHERE transaction_id=?", action, webhookStatus, transactionID)
 	return err
 }
 
 func DeleteTransaction(db *sql.DB, transactionID string) error {
 	_, err := db.Exec("DELETE FROM transactions WHERE transaction_id=?", transactionID)
 	return err
+}
+
+// DeleteTransactionByID transactionni raqamli id bo'yicha o'chiradi.
+func DeleteTransactionByID(db *sql.DB, id int64) error {
+	_, err := db.Exec("DELETE FROM transactions WHERE id=?", id)
+	return err
+}
+
+// TransactionOwner transaction egasini (user_id) qaytaradi (ownership tekshirish uchun).
+func TransactionOwner(db *sql.DB, id int64) (int64, error) {
+	var userID int64
+	err := db.QueryRow(`SELECT t.user_id FROM transactions tr
+		JOIN cards c ON c.id = tr.card_id
+		JOIN telegram_accounts t ON t.id = c.telegram_account_id
+		WHERE tr.id=?`, id).Scan(&userID)
+	return userID, err
+}
+
+// ListTransactionsByUser foydalanuvchi transactionlarini carta ma'lumoti va
+// hisoblangan holat (state) bilan qaytaradi. timeoutMins active/expired farqi uchun.
+func ListTransactionsByUser(db *sql.DB, userID int64, timeoutMins int) ([]domain.Transaction, error) {
+	rows, err := db.Query(`
+		SELECT tr.id, tr.card_id, tr.amount, tr.status, tr.webhook_status,
+		       COALESCE(tr.action,''), tr.transaction_id, tr.created_at,
+		       COALESCE(c.number,''), c.last4, COALESCE(c.owner_name,'')
+		FROM transactions tr
+		JOIN cards c ON c.id = tr.card_id
+		JOIN telegram_accounts t ON t.id = c.telegram_account_id
+		WHERE t.user_id = ?
+		ORDER BY tr.id DESC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	cutoff := time.Now().Add(-time.Duration(timeoutMins) * time.Minute)
+	var list []domain.Transaction
+	for rows.Next() {
+		var tr domain.Transaction
+		if err := rows.Scan(&tr.ID, &tr.CardID, &tr.Amount, &tr.Status, &tr.WebhookStatus,
+			&tr.Action, &tr.TransactionID, &tr.CreatedAt,
+			&tr.CardNumber, &tr.CardLast4, &tr.CardOwner); err != nil {
+			return nil, err
+		}
+		tr.State = transactionState(tr, cutoff)
+		list = append(list, tr)
+	}
+	return list, nil
+}
+
+// transactionState ko'rsatish uchun holat hisoblaydi: active | confirmed | cancelled | expired.
+func transactionState(tr domain.Transaction, cutoff time.Time) string {
+	if tr.Status {
+		// hali ochiq — timeout ichida bo'lsa active, aks holda close worker hali yetib bormagan (expired).
+		if tr.CreatedAt.After(cutoff) {
+			return "active"
+		}
+		return "expired"
+	}
+	switch tr.Action {
+	case "confirm":
+		return "confirmed"
+	case "cancel":
+		return "cancelled"
+	default:
+		return "cancelled" // eski yozuvlar (action saqlanmagan)
+	}
 }
 
 // minutesArg datetime('now', '-N minutes') uchun argument tayyorlaydi.

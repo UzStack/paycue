@@ -114,6 +114,8 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `GET`  | `/api/cards` | ✓ | `card list` |
 | `DELETE` | `/api/cards/{id}` | ✓ | `card delete` |
 | `POST` | `/api/transactions` | ✓ | `transaction create` |
+| `GET`  | `/api/transactions` | ✓ | `transaction list` |
+| `DELETE` | `/api/transactions/{id}` | ✓ | `transaction delete` |
 
 > `DELETE /api/telegram/{id}` accountni, uning cartalarini va tranzaksiyalarini
 > o'chiradi hamda kuzatuvni to'xtatib session faylini olib tashlaydi.
@@ -332,7 +334,19 @@ paycue-cli card add --account 1 --number "8600 1234 5678 7159" --owner "Samandar
 paycue-cli card list
 paycue-cli transaction create --amount 20000            # carta avtomatik tanlanadi
 paycue-cli transaction create --card 1 --amount 20000   # aniq carta
+paycue-cli transaction list                             # holati bilan ro'yxat
+paycue-cli transaction delete --id 5
 ```
+
+`GET /api/transactions` har bir transactionni carta ma'lumoti (to'liq `card_number`,
+`card_last4`, `card_owner`) va hisoblangan `state` bilan qaytaradi:
+
+| `state` | Ma'nosi |
+| --- | --- |
+| `active` | ochiq, to'lov kutilmoqda (timeout ichida) |
+| `confirmed` | to'lov tushdi (webhook `confirm`) |
+| `cancelled` | muddati o'tib bekor qilindi (`cancel`) |
+| `expired` | muddati o'tgan, lekin close worker hali yopmagan |
 
 ### Bir nechta account (profillar)
 

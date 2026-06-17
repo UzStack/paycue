@@ -29,6 +29,8 @@ export const api = {
   cardList: () => request('/api/cards'),
   cardDelete: (id) => request(`/api/cards/${id}`, { method: 'DELETE' }),
   transactionCreate: (body) => request('/api/transactions', { method: 'POST', body: JSON.stringify(body) }),
+  transactionList: () => request('/api/transactions'),
+  transactionDelete: (id) => request(`/api/transactions/${id}`, { method: 'DELETE' }),
 }
 
 export { getToken }

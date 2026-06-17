@@ -50,7 +50,7 @@ func CloseTransactionWorker(ctx context.Context, db *sql.DB, log *zap.Logger, cf
 			}
 			for _, task := range transactions {
 				webhookStatus := sendUserWebhook(db, log, task)
-				if err := repository.ConfirmTransaction(db, task.TransID, webhookStatus); err != nil {
+				if err := repository.ConfirmTransaction(db, task.TransID, task.Action, webhookStatus); err != nil {
 					log.Info("transaction cancel error", zap.Error(err))
 				} else {
 					log.Info("transaction cancel", zap.Int64("amount", task.Amount), zap.String("transaction_id", task.TransID), zap.Bool("webhookStatus", webhookStatus))
@@ -76,7 +76,7 @@ func Worker(ctx context.Context, tasks <-chan domain.Task, log *zap.Logger, cfg 
 				continue
 			}
 			webhookStatus := sendUserWebhook(db, log, task)
-			if err := repository.ConfirmTransaction(db, task.TransID, webhookStatus); err != nil {
+			if err := repository.ConfirmTransaction(db, task.TransID, task.Action, webhookStatus); err != nil {
 				log.Error(err.Error())
 			}
 		}

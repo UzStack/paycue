@@ -81,7 +81,7 @@ func runTUI(a *app) {
 			"Webhook",
 			"Telegram accountlar",
 			"Cartalar",
-			"Transaction yaratish",
+			"Tranzaksiyalar",
 			"Chiqish",
 		})
 		if !ok {
@@ -379,12 +379,37 @@ func tuiCards(a *app) {
 }
 
 func tuiTransaction(a *app) {
-	card, _ := strconv.ParseInt(ask("card_id (bo'sh = avtomatik eng kam yuklangan)"), 10, 64)
-	amountStr, ok := askRequired("Summa (amount)")
-	if !ok {
-		return
+	for {
+		idx, ok := selectMenu("Tranzaksiyalar", []string{"Yaratish", "Ro'yxatni ko'rish", "O'chirish", "Orqaga"})
+		if !ok {
+			return
+		}
+		switch idx {
+		case 0:
+			card, _ := strconv.ParseInt(ask("card_id (bo'sh = avtomatik eng kam yuklangan)"), 10, 64)
+			amountStr, ok := askRequired("Summa (amount)")
+			if !ok {
+				break
+			}
+			amount, _ := strconv.ParseInt(amountStr, 10, 64)
+			out, err := a.c.do("POST", "/api/transactions", map[string]any{"card_id": card, "amount": amount})
+			show(out, err)
+		case 1:
+			out, err := a.c.do("GET", "/api/transactions", nil)
+			if err != nil {
+				show(out, err)
+				break
+			}
+			printTransactions(out["data"])
+		case 2:
+			id, ok := askRequired("O'chiriladigan transaction id")
+			if !ok {
+				break
+			}
+			out, err := a.c.do("DELETE", "/api/transactions/"+id, nil)
+			show(out, err)
+		case 3:
+			return
+		}
 	}
-	amount, _ := strconv.ParseInt(amountStr, 10, 64)
-	out, err := a.c.do("POST", "/api/transactions", map[string]any{"card_id": card, "amount": amount})
-	show(out, err)
 }

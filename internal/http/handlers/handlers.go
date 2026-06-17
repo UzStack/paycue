@@ -410,3 +410,34 @@ func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	ok(w, resp)
 }
+
+// TransactionList foydalanuvchi transactionlarini holat va carta ma'lumoti bilan qaytaradi.
+func (h *Handler) TransactionList(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	list, err := repository.ListTransactionsByUser(h.DB, user.ID, h.Cfg.TimeoutMins)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, list)
+}
+
+// TransactionDelete transactionni o'chiradi (faqat egasi).
+func (h *Handler) TransactionDelete(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil || id == 0 {
+		fail(w, http.StatusBadRequest, "noto'g'ri id")
+		return
+	}
+	owner, err := repository.TransactionOwner(h.DB, id)
+	if err != nil || owner != user.ID {
+		fail(w, http.StatusForbidden, "transaction sizga tegishli emas")
+		return
+	}
+	if err := repository.DeleteTransactionByID(h.DB, id); err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, map[string]any{"deleted": id})
+}

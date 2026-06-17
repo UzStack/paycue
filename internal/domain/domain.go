@@ -44,8 +44,15 @@ type Transaction struct {
 	ID            int64     `json:"id"`
 	CardID        int64     `json:"card_id"`
 	Amount        int64     `json:"amount"`
-	Status        bool      `json:"status"`
-	WebhookStatus bool      `json:"webhook_status"`
+	Status        bool      `json:"status"`           // true=active(ochiq), false=yopilgan
+	WebhookStatus bool      `json:"webhook_status"`   // webhook yetkazildimi
+	Action        string    `json:"action,omitempty"` // yopilganda: confirm | cancel
 	TransactionID string    `json:"transaction_id"`
 	CreatedAt     time.Time `json:"created_at"`
+
+	// Ro'yxatda (ListTransactionsByUser) to'ldiriladi:
+	State      string `json:"state,omitempty"`       // active | confirmed | cancelled | expired
+	CardNumber string `json:"card_number,omitempty"` // to'liq carta raqami
+	CardLast4  string `json:"card_last4,omitempty"`
+	CardOwner  string `json:"card_owner,omitempty"`
 }
