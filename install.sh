@@ -138,10 +138,31 @@ fi
 info "paycue o'rnatilmoqda..."
 echo
 info "Telegram API ma'lumotlarini https://my.telegram.org dan oling."
-read -rp "APP_ID: " APP_ID
-read -rp "APP_HASH: " APP_HASH
-read -rp "PORT [8080]: " PORT
+
+# `curl | bash` da stdin — pipe (skript), shu sabab interaktiv kiritish uchun
+# to'g'ridan-to'g'ri terminaldan (/dev/tty) o'qiymiz.
+if [ ! -e /dev/tty ]; then
+  red "Interaktiv kiritish kerak (APP_ID/APP_HASH). Skriptni yuklab, alohida ishga tushiring:"
+  echo "  curl -fsSL https://raw.githubusercontent.com/UzStack/paycue/main/install.sh -o paycue-install.sh"
+  echo "  sudo bash paycue-install.sh"
+  echo "Yoki APP_ID/APP_HASH ni env orqali bering:"
+  echo "  curl -fsSL .../install.sh | sudo APP_ID=... APP_HASH=... bash"
+  exit 1
+fi
+
+# Env orqali oldindan berilgan bo'lsa, qayta so'ramaymiz (set -u uchun default '').
+APP_ID="${APP_ID:-}"
+APP_HASH="${APP_HASH:-}"
+PORT="${PORT:-}"
+[ -z "$APP_ID" ]   && read -rp "APP_ID: " APP_ID < /dev/tty
+[ -z "$APP_HASH" ] && read -rp "APP_HASH: " APP_HASH < /dev/tty
+[ -z "$PORT" ]     && { read -rp "PORT [8080]: " PORT < /dev/tty || true; }
 PORT="${PORT:-8080}"
+
+if [ -z "$APP_ID" ] || [ -z "$APP_HASH" ]; then
+  red "APP_ID va APP_HASH majburiy. Bekor qilindi."
+  exit 1
+fi
 
 mkdir -p "$INSTALL_DIR"
 cat > "$ENV_FILE" <<EOF
@@ -154,6 +175,9 @@ WORKERS=10
 TRANSACTION_TIMEOUT=30
 DEBUG=false
 WEB_DIR=$INSTALL_DIR/web
+STATS_URL=https://paycue.uz
+STATS_REPORT=true
+STATS_DASHBOARD=false
 EOF
 chmod 600 "$ENV_FILE"
 green ".env yaratildi: $ENV_FILE"
