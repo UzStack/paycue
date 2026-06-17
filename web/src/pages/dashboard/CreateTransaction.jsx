@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
+import { formatAmount as maskAmount, rawAmount } from '../../format'
 
 function formatAmount(n) {
   if (!n) return ''
@@ -35,7 +36,7 @@ export default function CreateTransaction() {
     e.preventDefault()
     setError('')
     setResult(null)
-    const amt = Number(amount)
+    const amt = Number(rawAmount(amount))
     if (!amt || amt <= 0) { setError('To\'g\'ri summa kiriting'); return }
 
     setLoading(true)
@@ -69,11 +70,11 @@ export default function CreateTransaction() {
               </label>
               <div className="relative">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="50000"
-                  min="1"
+                  onChange={(e) => setAmount(maskAmount(e.target.value))}
+                  placeholder="50 000"
                   className="w-full px-3 py-2.5 pr-12 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm font-mono focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
                   disabled={loading}
                 />

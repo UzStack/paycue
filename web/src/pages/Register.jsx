@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { formatPhone, rawPhone } from '../format'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -13,7 +14,7 @@ export default function Register() {
     setError('')
 
     if (!form.name.trim()) { setError('Ism majburiy'); return }
-    if (!form.email.trim() && !form.phone.trim()) {
+    if (!form.email.trim() && !rawPhone(form.phone)) {
       setError('Email yoki telefon raqamdan kamida biri kiritilishi shart')
       return
     }
@@ -26,7 +27,7 @@ export default function Register() {
     try {
       const body = { name: form.name.trim() }
       if (form.email.trim()) body.email = form.email.trim()
-      if (form.phone.trim()) body.phone = form.phone.trim()
+      if (rawPhone(form.phone)) body.phone = rawPhone(form.phone)
       if (form.password) body.password = form.password
 
       const data = await api.register(body)
@@ -88,8 +89,8 @@ export default function Register() {
               <input
                 type="tel"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+998901234567"
+                onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })}
+                placeholder="+998 90 123 45 67"
                 className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
                 disabled={loading}
               />

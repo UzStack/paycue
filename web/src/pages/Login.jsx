@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import { formatLogin, rawLogin } from '../format'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -14,7 +15,7 @@ export default function Login() {
     if (!form.login.trim()) { setError('Email yoki telefon kiriting'); return }
     setLoading(true)
     try {
-      const data = await api.login(form)
+      const data = await api.login({ login: rawLogin(form.login), password: form.password })
       localStorage.setItem('paycue_token', data.token)
       navigate('/dashboard')
     } catch (err) {
@@ -42,8 +43,8 @@ export default function Login() {
               <input
                 type="text"
                 value={form.login}
-                onChange={(e) => setForm({ ...form, login: e.target.value })}
-                placeholder="+998901234567"
+                onChange={(e) => setForm({ ...form, login: formatLogin(e.target.value) })}
+                placeholder="+998 90 123 45 67 yoki email"
                 className="w-full px-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
                 disabled={loading}
               />

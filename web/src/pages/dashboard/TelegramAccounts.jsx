@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
+import { formatPhone, rawPhone, formatCode } from '../../format'
 
 function StatusBadge({ status }) {
   if (status === 'active') {
@@ -88,10 +89,10 @@ export default function TelegramAccounts() {
   async function handleSendCode(e) {
     e.preventDefault()
     setFlowError('')
-    if (!phone.trim()) { setFlowError('Telefon raqam kiriting'); return }
+    if (!rawPhone(phone)) { setFlowError('Telefon raqam kiriting'); return }
     setFlowLoading(true)
     try {
-      const data = await api.telegramSendCode({ phone: phone.trim() })
+      const data = await api.telegramSendCode({ phone: rawPhone(phone) })
       setTgAccountId(data.telegram_account_id)
       setFlowMsg(data.message || 'Kod yuborildi')
       setFlowState(FLOW_VERIFY)
@@ -165,8 +166,8 @@ export default function TelegramAccounts() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+998901234567"
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                placeholder="+998 90 123 45 67"
                 className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
                 disabled={flowLoading}
               />
@@ -191,9 +192,10 @@ export default function TelegramAccounts() {
                 </label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="123456"
+                  onChange={(e) => setCode(formatCode(e.target.value))}
+                  placeholder="12345"
                   className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
                   disabled={flowLoading}
                 />

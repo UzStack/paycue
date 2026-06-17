@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
+import { formatCardNumber, rawCard } from '../../format'
 
 function formatDate(str) {
   if (!str) return ''
@@ -51,13 +52,13 @@ export default function Cards() {
     e.preventDefault()
     setFormError('')
     if (!form.telegram_account_id) { setFormError('Telegram akkaunt tanlang'); return }
-    if (!form.number.trim()) { setFormError('Karta raqami kiriting'); return }
+    if (rawCard(form.number).length < 16) { setFormError('Karta raqamini to\'liq kiriting (16 raqam)'); return }
     if (!form.owner_name.trim()) { setFormError('Egasi ismini kiriting'); return }
     setFormLoading(true)
     try {
       await api.cardCreate({
         telegram_account_id: Number(form.telegram_account_id),
-        number: form.number.replace(/\s/g, ''),
+        number: rawCard(form.number),
         owner_name: form.owner_name.trim(),
       })
       setShowForm(false)
@@ -136,8 +137,9 @@ export default function Cards() {
               </label>
               <input
                 type="text"
+                inputMode="numeric"
                 value={form.number}
-                onChange={(e) => setForm({ ...form, number: e.target.value })}
+                onChange={(e) => setForm({ ...form, number: formatCardNumber(e.target.value) })}
                 placeholder="9860 1234 5678 9012"
                 maxLength={19}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100 placeholder-zinc-500 text-sm font-mono focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-colors"
