@@ -18,6 +18,7 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 	mux.HandleFunc("GET /health/", h.Health)
 	mux.HandleFunc("POST /api/register", h.Register)
 	mux.HandleFunc("POST /api/login", h.Login)
+	mux.HandleFunc("GET /api/pay/{id}", h.PayInfo) // public to'lov sahifasi ma'lumoti
 
 	// Token bilan himoyalangan
 	auth := func(next http.HandlerFunc) http.HandlerFunc {

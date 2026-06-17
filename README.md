@@ -104,6 +104,7 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `GET`  | `/health/` | ✗ | — |
 | `POST` | `/api/register` | ✗ | `register` |
 | `POST` | `/api/login` | ✗ | `login` |
+| `GET`  | `/api/pay/{transaction_id}` | ✗ | — (public to'lov sahifasi) |
 | `GET`  | `/api/webhook` | ✓ | `webhook` (urlsiz) |
 | `POST` | `/api/webhook` | ✓ | `webhook --url` |
 | `GET`  | `/api/webhook/logs` | ✓ | `webhook logs` |
@@ -290,11 +291,17 @@ curl -X POST http://<host>:8080/api/transactions \
 ```
 
 ```json
-{ "status": true, "data": { "amount": 20001, "card_id": 1, "transaction_id": "<uuid>" } }
+{ "status": true, "data": { "amount": 20001, "card_id": 1, "transaction_id": "<uuid>", "pay_url": "https://<host>/pay/<uuid>" } }
 ```
 
 > `amount` — siz xohlagan summa; javobdagi `amount` — foydalanuvchidan so'raladigan
 > (band bo'lmagan) summa. Increment har carta bo'yicha alohida hisoblanadi.
+
+`pay_url` — to'lovchiga yuboriladigan **public to'lov sahifasi** havolasi. Unda
+to'lov summasi, qaysi cartaga o'tkazish kerakligi, qolgan vaqt (countdown) va holat
+ko'rinadi; to'lov tasdiqlangach sahifa avtomatik yangilanadi. Sahifa ma'lumotini
+`GET /api/pay/{transaction_id}` (auth talab qilmaydi) qaytaradi: `amount`,
+`card_number`, `card_owner`, `state`, `expires_at`, `timeout_mins`.
 
 ### Webhook payload
 

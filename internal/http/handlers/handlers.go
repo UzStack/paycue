@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/UzStack/paycue/internal/auth"
 	"github.com/UzStack/paycue/internal/config"
@@ -46,6 +47,15 @@ func fail(w http.ResponseWriter, code int, detail string) {
 
 func decode(r *http.Request, v any) error {
 	return json.NewDecoder(r.Body).Decode(v)
+}
+
+// baseURL so'rovdan public asosiy URL (scheme://host) ni tiklaydi — pay_url uchun.
+func baseURL(r *http.Request) string {
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		scheme = "https"
+	}
+	return scheme + "://" + r.Host
 }
 
 // SPAHandler web UI statik fayllarini xizmat qiladi. Fayl topilmasa (client-side
@@ -406,11 +416,12 @@ func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// Qaysi cartada yaratilgani (raqam/egasi) javobda qaytadi.
+	// Qaysi cartada yaratilgani (raqam/egasi) va to'lov havolasi javobda qaytadi.
 	resp := map[string]any{
 		"amount":         amount,
 		"card_id":        cardID,
 		"transaction_id": transID,
+		"pay_url":        baseURL(r) + "/pay/" + transID,
 	}
 	if card, err := repository.GetCard(h.DB, cardID); err == nil {
 		resp["card"] = map[string]any{
@@ -432,6 +443,35 @@ func (h *Handler) TransactionList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ok(w, list)
+}
+
+// PayInfo public to'lov sahifasi uchun transaction holatini qaytaradi (auth talab
+// qilinmaydi — havola UUID orqali himoyalangan). To'lovchi shu summani aynan ko'rsatilgan
+// cartaga o'tkazadi; sahifa expires_at orqali qolgan vaqtni va state'ni ko'rsatadi.
+func (h *Handler) PayInfo(w http.ResponseWriter, r *http.Request) {
+	transID := strings.TrimSpace(r.PathValue("id"))
+	if transID == "" {
+		fail(w, http.StatusBadRequest, "transaction_id majburiy")
+		return
+	}
+	tr, err := repository.GetTransactionByTransID(h.DB, transID, h.Cfg.TimeoutMins)
+	if err != nil {
+		fail(w, http.StatusNotFound, "tranzaksiya topilmadi")
+		return
+	}
+	expiresAt := tr.CreatedAt.Add(time.Duration(h.Cfg.TimeoutMins) * time.Minute)
+	ok(w, map[string]any{
+		"transaction_id": tr.TransactionID,
+		"amount":         tr.Amount,
+		"card_number":    tr.CardNumber,
+		"card_last4":     tr.CardLast4,
+		"card_owner":     tr.CardOwner,
+		"state":          tr.State,
+		"status":         tr.Status,
+		"created_at":     tr.CreatedAt,
+		"expires_at":     expiresAt,
+		"timeout_mins":   h.Cfg.TimeoutMins,
+	})
 }
 
 // TransactionDelete transactionni o'chiradi (faqat egasi).

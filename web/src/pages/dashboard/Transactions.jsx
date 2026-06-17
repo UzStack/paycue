@@ -32,6 +32,32 @@ const STATES = {
   expired: { label: 'Muddati o\'tgan', cls: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
 }
 
+// Pay havolasini nusxalash tugmasi (yaratishdan keyin ham qayta olish uchun).
+function PayLinkButton({ transactionId }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    const url = `${window.location.origin}/pay/${transactionId}`
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {}
+  }
+  return (
+    <button
+      onClick={copy}
+      title="To'lov havolasini nusxalash"
+      className={`transition-colors ${copied ? 'text-emerald-400' : 'text-zinc-500 hover:text-sky-400'}`}
+    >
+      {copied ? (
+        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+      ) : (
+        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" /></svg>
+      )}
+    </button>
+  )
+}
+
 function StateBadge({ state }) {
   const s = STATES[state] || { label: state || '—', cls: 'text-zinc-400 bg-zinc-800 border-zinc-700' }
   return (
@@ -301,16 +327,19 @@ export default function Transactions() {
                     <WebhookChip tx={t} />
                   </div>
                   <span className="md:w-40 pl-7 md:pl-0 text-zinc-500 text-xs">{formatDateTime(t.created_at)}</span>
+                  <div className="flex items-center gap-3 self-end md:self-auto">
+                  <PayLinkButton transactionId={t.transaction_id} />
                   <button
                     onClick={() => handleDelete(t.id)}
                     disabled={busy}
                     title="O'chirish"
-                    className="md:w-8 self-end md:self-auto text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+                    className="text-zinc-500 hover:text-red-400 disabled:opacity-50 transition-colors"
                   >
                     <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>
                   </button>
+                  </div>
                 </div>
               ))}
             </div>

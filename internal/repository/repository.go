@@ -445,6 +445,27 @@ func ListTransactionsByUser(db *sql.DB, userID int64, timeoutMins int) ([]domain
 	return list, nil
 }
 
+// GetTransactionByTransID transaction_id (UUID) bo'yicha bitta transactionni carta
+// ma'lumoti va holati bilan qaytaradi (public to'lov sahifasi uchun, user scopesiz).
+func GetTransactionByTransID(db *sql.DB, transID string, timeoutMins int) (*domain.Transaction, error) {
+	var tr domain.Transaction
+	err := db.QueryRow(`
+		SELECT tr.id, tr.card_id, tr.amount, tr.status, tr.webhook_status, COALESCE(tr.webhook_attempts,0),
+		       COALESCE(tr.action,''), tr.transaction_id, tr.created_at,
+		       COALESCE(c.number,''), c.last4, COALESCE(c.owner_name,'')
+		FROM transactions tr
+		JOIN cards c ON c.id = tr.card_id
+		WHERE tr.transaction_id = ?`, transID).
+		Scan(&tr.ID, &tr.CardID, &tr.Amount, &tr.Status, &tr.WebhookStatus, &tr.WebhookAttempts,
+			&tr.Action, &tr.TransactionID, &tr.CreatedAt,
+			&tr.CardNumber, &tr.CardLast4, &tr.CardOwner)
+	if err != nil {
+		return nil, err
+	}
+	tr.State = transactionState(tr, time.Now().Add(-time.Duration(timeoutMins)*time.Minute))
+	return &tr, nil
+}
+
 // transactionState ko'rsatish uchun holat hisoblaydi: active | confirmed | cancelled | expired.
 func transactionState(tr domain.Transaction, cutoff time.Time) string {
 	if tr.Status {
