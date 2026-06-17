@@ -58,6 +58,38 @@ type Transaction struct {
 	CardOwner  string `json:"card_owner,omitempty"`
 }
 
+// StatsReport — bitta instance'ning anonim foydalanish hisoboti (maxfiy ma'lumotsiz).
+type StatsReport struct {
+	InstanceID            string    `json:"instance_id"`
+	Version               string    `json:"version"`
+	OS                    string    `json:"os"`
+	Arch                  string    `json:"arch"`
+	Users                 int       `json:"users"`
+	TelegramAccounts      int       `json:"telegram_accounts"`
+	Cards                 int       `json:"cards"`
+	Transactions          int       `json:"transactions"`
+	TransactionsActive    int       `json:"transactions_active"`
+	TransactionsConfirmed int       `json:"transactions_confirmed"`
+	TransactionsCancelled int       `json:"transactions_cancelled"`
+	WebhookLogs           int       `json:"webhook_logs"`
+	ReportedAt            time.Time `json:"reported_at,omitempty"`
+}
+
+// StatsAggregate — barcha instance'lar bo'yicha jamlanma (kollektor uchun).
+type StatsAggregate struct {
+	Enabled               bool           `json:"enabled"`
+	Instances             int            `json:"instances"`
+	Users                 int            `json:"users"`
+	TelegramAccounts      int            `json:"telegram_accounts"`
+	Cards                 int            `json:"cards"`
+	Transactions          int            `json:"transactions"`
+	TransactionsActive    int            `json:"transactions_active"`
+	TransactionsConfirmed int            `json:"transactions_confirmed"`
+	TransactionsCancelled int            `json:"transactions_cancelled"`
+	WebhookLogs           int            `json:"webhook_logs"`
+	Versions              map[string]int `json:"versions"` // versiya -> instance soni
+}
+
 // WebhookLog bitta webhook yetkazib berish urinishini (natijasini) yozib boradi.
 type WebhookLog struct {
 	ID            int64     `json:"id"`

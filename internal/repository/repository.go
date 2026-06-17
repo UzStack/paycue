@@ -75,6 +75,27 @@ func InitTables(db *sql.DB) {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE INDEX IF NOT EXISTS webhook_logs_user_index ON webhook_logs(user_id, created_at);
+
+		CREATE TABLE IF NOT EXISTS meta (
+			key TEXT PRIMARY KEY,
+			value TEXT DEFAULT ''
+		);
+
+		CREATE TABLE IF NOT EXISTS stats_reports (
+			instance_id TEXT PRIMARY KEY,
+			version TEXT DEFAULT '',
+			os TEXT DEFAULT '',
+			arch TEXT DEFAULT '',
+			users INTEGER DEFAULT 0,
+			telegram_accounts INTEGER DEFAULT 0,
+			cards INTEGER DEFAULT 0,
+			transactions INTEGER DEFAULT 0,
+			transactions_active INTEGER DEFAULT 0,
+			transactions_confirmed INTEGER DEFAULT 0,
+			transactions_cancelled INTEGER DEFAULT 0,
+			webhook_logs INTEGER DEFAULT 0,
+			reported_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
 	`)
 	if err != nil {
 		panic(err)
@@ -500,4 +521,84 @@ func transactionState(tr domain.Transaction, cutoff time.Time) string {
 // minutesArg datetime('now', '-N minutes') uchun argument tayyorlaydi.
 func minutesArg(mins int) string {
 	return "-" + strconv.Itoa(mins) + " minutes"
+}
+
+// ---- Stats / telemetriya ----
+
+// GetOrCreateInstanceID bu instance uchun barqaror anonim identifikator qaytaradi
+// (meta jadvalida saqlanadi, maxfiy emas — faqat hisobotlarni ajratish uchun).
+func GetOrCreateInstanceID(db *sql.DB) (string, error) {
+	var id string
+	if err := db.QueryRow("SELECT value FROM meta WHERE key='instance_id'").Scan(&id); err == nil && id != "" {
+		return id, nil
+	}
+	id = uuid.New().String()
+	_, err := db.Exec("INSERT OR REPLACE INTO meta(key, value) VALUES('instance_id', ?)", id)
+	return id, err
+}
+
+// LocalStats bu instance bo'yicha anonim agregat sanoqlarni yig'adi (PII yo'q).
+func LocalStats(db *sql.DB) domain.StatsReport {
+	count := func(q string) int {
+		var n int
+		db.QueryRow(q).Scan(&n)
+		return n
+	}
+	return domain.StatsReport{
+		Users:                 count("SELECT count(*) FROM users"),
+		TelegramAccounts:      count("SELECT count(*) FROM telegram_accounts"),
+		Cards:                 count("SELECT count(*) FROM cards"),
+		Transactions:          count("SELECT count(*) FROM transactions"),
+		TransactionsActive:    count("SELECT count(*) FROM transactions WHERE status=1"),
+		TransactionsConfirmed: count("SELECT count(*) FROM transactions WHERE status=0 AND action='confirm'"),
+		TransactionsCancelled: count("SELECT count(*) FROM transactions WHERE status=0 AND action!='confirm'"),
+		WebhookLogs:           count("SELECT count(*) FROM webhook_logs"),
+	}
+}
+
+// SaveStatsReport instance hisobotini saqlaydi (instance_id bo'yicha upsert — oxirgi snapshot).
+func SaveStatsReport(db *sql.DB, r domain.StatsReport) error {
+	_, err := db.Exec(`INSERT INTO stats_reports
+		(instance_id, version, os, arch, users, telegram_accounts, cards, transactions,
+		 transactions_active, transactions_confirmed, transactions_cancelled, webhook_logs, reported_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+		ON CONFLICT(instance_id) DO UPDATE SET
+		 version=excluded.version, os=excluded.os, arch=excluded.arch,
+		 users=excluded.users, telegram_accounts=excluded.telegram_accounts, cards=excluded.cards,
+		 transactions=excluded.transactions, transactions_active=excluded.transactions_active,
+		 transactions_confirmed=excluded.transactions_confirmed, transactions_cancelled=excluded.transactions_cancelled,
+		 webhook_logs=excluded.webhook_logs, reported_at=CURRENT_TIMESTAMP`,
+		r.InstanceID, r.Version, r.OS, r.Arch, r.Users, r.TelegramAccounts, r.Cards, r.Transactions,
+		r.TransactionsActive, r.TransactionsConfirmed, r.TransactionsCancelled, r.WebhookLogs)
+	return err
+}
+
+// AggregateStats barcha instance hisobotlari bo'yicha jamlanma qaytaradi.
+func AggregateStats(db *sql.DB) (domain.StatsAggregate, error) {
+	a := domain.StatsAggregate{Versions: map[string]int{}}
+	err := db.QueryRow(`SELECT count(*),
+		COALESCE(sum(users),0), COALESCE(sum(telegram_accounts),0), COALESCE(sum(cards),0),
+		COALESCE(sum(transactions),0), COALESCE(sum(transactions_active),0),
+		COALESCE(sum(transactions_confirmed),0), COALESCE(sum(transactions_cancelled),0),
+		COALESCE(sum(webhook_logs),0)
+		FROM stats_reports`).Scan(&a.Instances, &a.Users, &a.TelegramAccounts, &a.Cards,
+		&a.Transactions, &a.TransactionsActive, &a.TransactionsConfirmed, &a.TransactionsCancelled, &a.WebhookLogs)
+	if err != nil {
+		return a, err
+	}
+	rows, err := db.Query("SELECT COALESCE(version,''), count(*) FROM stats_reports GROUP BY version ORDER BY count(*) DESC")
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var v string
+			var n int
+			if rows.Scan(&v, &n) == nil {
+				if v == "" {
+					v = "noma'lum"
+				}
+				a.Versions[v] = n
+			}
+		}
+	}
+	return a, nil
 }

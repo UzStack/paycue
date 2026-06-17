@@ -215,6 +215,41 @@ func (h *Handler) WebhookLogs(w http.ResponseWriter, r *http.Request) {
 	ok(w, list)
 }
 
+// ---- Stats / telemetriya ----
+
+// StatsReport boshqa instance'lardan anonim foydalanish hisobotini qabul qiladi (public).
+// Faqat kollektor (StatsDashboard yoqilgan) saqlaydi; aks holda no-op.
+func (h *Handler) StatsReport(w http.ResponseWriter, r *http.Request) {
+	var in domain.StatsReport
+	if err := decode(r, &in); err != nil || strings.TrimSpace(in.InstanceID) == "" {
+		fail(w, http.StatusBadRequest, "noto'g'ri hisobot")
+		return
+	}
+	if h.Cfg.StatsDashboard {
+		if err := repository.SaveStatsReport(h.DB, in); err != nil {
+			fail(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	ok(w, map[string]any{"received": true})
+}
+
+// Stats jamlangan statistikani qaytaradi. StatsDashboard o'chiq bo'lsa {enabled:false}
+// qaytaradi — frontend shu asosida sahifani ko'rsatadi yoki yashiradi (default o'chiq).
+func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
+	if !h.Cfg.StatsDashboard {
+		ok(w, map[string]any{"enabled": false})
+		return
+	}
+	agg, err := repository.AggregateStats(h.DB)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	agg.Enabled = true
+	ok(w, agg)
+}
+
 // ---- Telegram ----
 
 func (h *Handler) TelegramSendCode(w http.ResponseWriter, r *http.Request) {

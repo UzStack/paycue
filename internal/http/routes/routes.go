@@ -18,7 +18,8 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 	mux.HandleFunc("GET /health/", h.Health)
 	mux.HandleFunc("POST /api/register", h.Register)
 	mux.HandleFunc("POST /api/login", h.Login)
-	mux.HandleFunc("GET /api/pay/{id}", h.PayInfo) // public to'lov sahifasi ma'lumoti
+	mux.HandleFunc("GET /api/pay/{id}", h.PayInfo)         // public to'lov sahifasi ma'lumoti
+	mux.HandleFunc("POST /api/stats/report", h.StatsReport) // public — instance'lar anonim hisobot yuboradi
 
 	// Token bilan himoyalangan
 	auth := func(next http.HandlerFunc) http.HandlerFunc {
@@ -41,6 +42,8 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 	mux.HandleFunc("POST /api/transactions", auth(h.TransactionCreate))
 	mux.HandleFunc("GET /api/transactions", auth(h.TransactionList))
 	mux.HandleFunc("DELETE /api/transactions/{id}", auth(h.TransactionDelete))
+
+	mux.HandleFunc("GET /api/stats", auth(h.Stats))
 
 	// Web UI (statik) — WEB_DIR sozlangan bo'lsa, SPA sifatida xizmat qiladi.
 	// /api/* va /health/ aniqroq pattern bo'lgani uchun ular ustun keladi.

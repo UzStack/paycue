@@ -22,6 +22,7 @@ export const api = {
   getWebhook: () => request('/api/webhook'),
   setWebhook: (body) => request('/api/webhook', { method: 'POST', body: JSON.stringify(body) }),
   webhookLogs: () => request('/api/webhook/logs'),
+  stats: () => request('/api/stats'),
   telegramSendCode: (body) => request('/api/telegram/send-code', { method: 'POST', body: JSON.stringify(body) }),
   telegramVerify: (body) => request('/api/telegram/verify', { method: 'POST', body: JSON.stringify(body) }),
   telegramList: () => request('/api/telegram'),

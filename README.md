@@ -73,11 +73,20 @@ TRANSACTION_TIMEOUT=30
 DEBUG=false
 CORS_ORIGIN=*
 WEB_DIR=            # sozlansa, server shu papkadan web UI ni (SPA) xizmat qiladi
+STATS_URL=https://paycue.uz   # anonim statistika yuboriladigan kollektor
+STATS_REPORT=true             # anonim foydalanish statistikasini yuborish (false bilan o'chadi)
+STATS_DASHBOARD=false         # hisobotlarni qabul qilib UI'da ko'rsatish (default o'chiq)
 ```
 
 > `WEB_DIR` ko'rsatilsa (masalan `./web/dist`), API va web UI **bitta portda**
 > ishlaydi: `/` va dashboard yo'llari UI, `/api/*` va `/health/` esa API.
 > `install.sh` buni avtomatik sozlaydi.
+
+> **Telemetriya:** har bir instance **anonim** foydalanish sanoqlarini (foydalanuvchi,
+> account, carta, transaction, webhook log soni + versiya/OS) `STATS_URL`ga 6 soatda bir
+> yuboradi. Hech qanday maxfiy ma'lumot (token, telefon, carta raqami, ism) yuborilmaydi.
+> `STATS_REPORT=false` bilan butunlay o'chiriladi. `STATS_DASHBOARD=true` qilingan instance
+> hisobotlarni qabul qiladi va dashboardda **Statistika** sahifasini ko'rsatadi (default o'chiq).
 
 ```bash
 make build          # bin/paycue va bin/paycue-cli
@@ -105,6 +114,8 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `POST` | `/api/register` | ✗ | `register` |
 | `POST` | `/api/login` | ✗ | `login` |
 | `GET`  | `/api/pay/{transaction_id}` | ✗ | — (public to'lov sahifasi) |
+| `POST` | `/api/stats/report` | ✗ | — (anonim telemetriya) |
+| `GET`  | `/api/stats` | ✓ | — (kollektor jamlanmasi) |
 | `GET`  | `/api/webhook` | ✓ | `webhook` (urlsiz) |
 | `POST` | `/api/webhook` | ✓ | `webhook --url` |
 | `GET`  | `/api/webhook/logs` | ✓ | `webhook logs` |

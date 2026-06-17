@@ -109,6 +109,11 @@ func main() {
 	tgManager := telegram.NewManager(cfg, db, log, tasks)
 	tgManager.RestoreWatchers(ctx)
 
+	// Anonim foydalanish statistikasini kollektorga yuborib turamiz (STATS_REPORT=false bilan o'chiriladi).
+	if cfg.StatsReport {
+		usecase.StartStatsReporter(ctx, db, log, cfg, VERSION)
+	}
+
 	mux := http.NewServeMux()
 	routes.InitRoutes(mux, db, log, cfg, tgManager)
 

@@ -17,6 +17,11 @@ type Config struct {
 	Debug       bool
 	CORSOrigin  string
 	WebDir      string
+
+	// Telemetriya (anonim foydalanish statistikasi)
+	StatsURL       string // hisobotlar yuboriladigan kollektor (default https://paycue.uz)
+	StatsReport    bool   // bu instance o'z anonim statistikasini yuboradimi (default ha)
+	StatsDashboard bool   // bu instance hisobotlarni qabul qilib UI'da ko'rsatadimi (default yo'q)
 }
 
 func NewConfig() (*Config, error) {
@@ -63,6 +68,10 @@ func NewConfig() (*Config, error) {
 		Debug:       os.Getenv("DEBUG") == "true",
 		CORSOrigin:  GetenvValue("CORS_ORIGIN", "*"),
 		WebDir:      GetenvValue("WEB_DIR", ""),
+
+		StatsURL:       GetenvValue("STATS_URL", "https://paycue.uz"),
+		StatsReport:    os.Getenv("STATS_REPORT") != "false",  // default: yoqilgan (yubor)
+		StatsDashboard: os.Getenv("STATS_DASHBOARD") == "true", // default: o'chiq
 	}, nil
 }
 
