@@ -1,5 +1,48 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getToken } from '../api'
+
+const INSTALL_CMD = 'curl -fsSL https://raw.githubusercontent.com/UzStack/paycue/main/install.sh | sudo bash'
+
+function InstallBlock() {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    navigator.clipboard.writeText(INSTALL_CMD).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }
+  return (
+    <div className="bg-zinc-950 border border-zinc-800 rounded-lg overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800">
+        <div className="flex gap-1.5">
+          <span className="w-3 h-3 rounded-full bg-zinc-700" />
+          <span className="w-3 h-3 rounded-full bg-zinc-700" />
+          <span className="w-3 h-3 rounded-full bg-zinc-700" />
+        </div>
+        <span className="text-xs text-zinc-500 font-mono ml-2">bash — Linux server</span>
+        <button
+          onClick={copy}
+          className={`ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+            copied ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+          }`}
+        >
+          {copied ? (
+            <><svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>Nusxalandi</>
+          ) : (
+            <><svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75c0-.212.03-.418.084-.612m7.332 0A48.2 48.2 0 0117.66 4.07c1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185" /></svg>Nusxalash</>
+          )}
+        </button>
+      </div>
+      <div className="px-5 py-4 font-mono text-sm overflow-x-auto">
+        <code className="text-zinc-300 whitespace-pre">
+          <span className="text-emerald-400 select-none">$ </span>
+          {INSTALL_CMD}
+        </code>
+      </div>
+    </div>
+  )
+}
 
 function CodeBlock() {
   return (
@@ -14,21 +57,21 @@ function CodeBlock() {
       </div>
       <pre className="px-5 py-4 text-sm font-mono leading-relaxed text-zinc-300 overflow-x-auto">
         <span className="text-zinc-500">{'{'}</span>{'\n'}
+        {'  '}<span className="text-sky-400">"action"</span>
+        <span className="text-zinc-500">: </span>
+        <span className="text-amber-400">"confirm"</span>
+        <span className="text-zinc-500">,</span>{'\n'}
         {'  '}<span className="text-sky-400">"amount"</span>
         <span className="text-zinc-500">: </span>
-        <span className="text-emerald-400">50000</span>
+        <span className="text-emerald-400">20001</span>
         <span className="text-zinc-500">,</span>{'\n'}
-        {'  '}<span className="text-sky-400">"card_last4"</span>
+        {'  '}<span className="text-sky-400">"card_id"</span>
         <span className="text-zinc-500">: </span>
-        <span className="text-amber-400">"4521"</span>
+        <span className="text-emerald-400">1</span>
         <span className="text-zinc-500">,</span>{'\n'}
-        {'  '}<span className="text-sky-400">"from"</span>
+        {'  '}<span className="text-sky-400">"transaction_id"</span>
         <span className="text-zinc-500">: </span>
-        <span className="text-amber-400">"Alisher T."</span>
-        <span className="text-zinc-500">,</span>{'\n'}
-        {'  '}<span className="text-sky-400">"timestamp"</span>
-        <span className="text-zinc-500">: </span>
-        <span className="text-amber-400">"2026-06-17T14:32:01Z"</span>{'\n'}
+        <span className="text-amber-400">"a1b2c3d4-…"</span>{'\n'}
         <span className="text-zinc-500">{'}'}</span>
       </pre>
     </div>
@@ -347,6 +390,57 @@ export default function Landing() {
               <p className="text-zinc-400 text-sm leading-relaxed mt-3 pr-8">{item.a}</p>
             </details>
           ))}
+        </div>
+      </section>
+
+      {/* O'z serveringizga o'rnatish (self-host) */}
+      <section className="border-t border-zinc-800/60 bg-zinc-900/30">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-20">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-medium mb-5">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                Open source · self-host
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-zinc-50 tracking-tight mb-3">
+                O'z serveringizga o'rnating
+              </h2>
+              <p className="text-zinc-400 text-base leading-relaxed mb-5 max-w-md">
+                Linux serveringizda bitta buyruq bilan ishga tushiring — server, web UI va CLI
+                avtomatik o'rnatiladi. Ma'lumotlar to'liq sizning serveringizda qoladi.
+              </p>
+              <ul className="space-y-2 mb-6">
+                {[
+                  'Telegram APP_ID / APP_HASH so\'raydi, .env tayyorlaydi',
+                  'Oxirgi releasedan binarylarni yuklab, systemd servisini sozlaydi',
+                  'macOS uchun faqat CLI o\'rnatiladi (server Linuxda ishlaydi)',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2 text-sm text-zinc-400">
+                    <svg width="16" height="16" className="text-sky-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="https://github.com/UzStack/paycue"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-zinc-300 hover:text-zinc-100 transition-colors"
+              >
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>
+                To'liq hujjat — GitHub
+              </a>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-4 bg-sky-500/5 rounded-xl blur-xl" />
+              <div className="relative">
+                <InstallBlock />
+                <p className="mt-3 text-xs text-zinc-500 px-1">
+                  Allaqachon o'rnatilgan bo'lsa, shu buyruq oxirgi releasega yangilaydi.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
