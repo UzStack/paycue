@@ -1,22 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api'
+import { formatAmount, formatDateTime } from '../../format'
 
 const PAGE_SIZE = 15
-
-function formatAmount(n) {
-  if (n === null || n === undefined) return ''
-  return Number(n).toLocaleString('uz-UZ')
-}
-
-function formatDateTime(str) {
-  if (!str) return ''
-  try {
-    return new Date(str).toLocaleString('uz-UZ', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return str }
-}
 
 // To'liq karta raqamini 4 talab bo'lib ko'rsatadi (yashirilmaydi — apidan keladi).
 function formatCard(num, last4) {
@@ -186,11 +172,15 @@ export default function Transactions() {
     if (!window.confirm(`${ids.length} ta tranzaksiyani o'chirasizmi?`)) return
     setBusy(true)
     try {
-      await Promise.all(ids.map((id) => api.transactionDelete(id).catch(() => null)))
-      setItems((prev) => prev.filter((t) => !selected.has(t.id)))
-      setSelected(new Set())
-    } catch (err) {
-      alert('Xato: ' + err.message)
+      // Har biri uchun natijani kuzatamiz — faqat haqiqatan o'chganlarini UIdan olamiz.
+      const results = await Promise.all(
+        ids.map((id) => api.transactionDelete(id).then(() => id).catch(() => null))
+      )
+      const deleted = new Set(results.filter((id) => id !== null))
+      setItems((prev) => prev.filter((t) => !deleted.has(t.id)))
+      setSelected((prev) => new Set([...prev].filter((id) => !deleted.has(id))))
+      const failed = ids.length - deleted.size
+      if (failed > 0) alert(`${failed} ta tranzaksiya o'chmadi — qaytadan urinib ko'ring.`)
     } finally {
       setBusy(false)
     }

@@ -50,12 +50,22 @@ func decode(r *http.Request, v any) error {
 }
 
 // baseURL so'rovdan public asosiy URL (scheme://host) ni tiklaydi — pay_url uchun.
+// Reverse-proxy orqasida X-Forwarded-Proto/Host'ni hisobga oladi (aks holda pay_url
+// ichki/noto'g'ri host bilan chiqib, mijoz ocholmaydigan havola bo'lardi).
 func baseURL(r *http.Request) string {
 	scheme := "http"
 	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
 		scheme = "https"
 	}
-	return scheme + "://" + r.Host
+	host := r.Host
+	if fh := r.Header.Get("X-Forwarded-Host"); fh != "" {
+		// bir nechta proxy bo'lsa vergul bilan kelishi mumkin — birinchisini olamiz.
+		if i := strings.IndexByte(fh, ','); i >= 0 {
+			fh = fh[:i]
+		}
+		host = strings.TrimSpace(fh)
+	}
+	return scheme + "://" + host
 }
 
 // SPAHandler web UI statik fayllarini xizmat qiladi. Fayl topilmasa (client-side
@@ -197,8 +207,7 @@ func (h *Handler) SetWebhook(w http.ResponseWriter, r *http.Request) {
 // WebhookLogs foydalanuvchining webhook yetkazib berish loglarini qaytaradi.
 func (h *Handler) WebhookLogs(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFrom(r)
-	const limit = 1000 // cheksiz o'smasligi uchun oxirgi 1000 ta
-	list, err := repository.ListWebhookLogsByUser(h.DB, user.ID, limit)
+	list, err := repository.ListWebhookLogsByUser(h.DB, user.ID, repository.WebhookLogsPerUser)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return

@@ -362,13 +362,25 @@ func ConfirmTransaction(db *sql.DB, transactionID, action string, webhookStatus 
 	return err
 }
 
-// CreateWebhookLog bitta webhook yetkazib berish natijasini yozadi.
+// WebhookLogsPerUser — har bir foydalanuvchi uchun saqlanadigan webhook loglar maksimumi.
+// Yozish (retention) va o'qish (limit) bir xil chegaradan foydalanadi.
+const WebhookLogsPerUser = 1000
+
+// CreateWebhookLog bitta webhook yetkazib berish natijasini yozadi va jadval
+// cheksiz o'smasligi uchun shu user bo'yicha eng eski ortiqcha loglarni o'chiradi.
 func CreateWebhookLog(db *sql.DB, l domain.WebhookLog) error {
 	_, err := db.Exec(`INSERT INTO webhook_logs
 		(user_id, transaction_id, card_id, action, url, amount, attempts, success, status_code, error)
 		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		l.UserID, l.TransactionID, l.CardID, l.Action, l.URL, l.Amount, l.Attempts, l.Success, l.StatusCode, l.Error)
-	return err
+	if err != nil {
+		return err
+	}
+	// Retention: eng yangi WebhookLogsPerUser tadan tashqaridagilarni o'chiramiz.
+	db.Exec(`DELETE FROM webhook_logs WHERE user_id=? AND id NOT IN (
+		SELECT id FROM webhook_logs WHERE user_id=? ORDER BY id DESC LIMIT ?)`,
+		l.UserID, l.UserID, WebhookLogsPerUser)
+	return nil
 }
 
 // ListWebhookLogsByUser foydalanuvchining webhook loglarini (oxirgilari birinchi)

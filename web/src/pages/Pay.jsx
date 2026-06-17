@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
 
@@ -80,7 +80,6 @@ export default function Pay() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [now, setNow] = useState(() => Date.now())
-  const pollRef = useRef(null)
 
   const fetchInfo = useCallback(async () => {
     try {
@@ -99,23 +98,22 @@ export default function Pay() {
   // Dastlabki yuklash
   useEffect(() => { fetchInfo() }, [fetchInfo])
 
-  // Har soniya soatni yangilab turamiz (countdown uchun)
+  // To'lov hali ochiqmi (active yoki worker hali yopmagan expired) — soat va polling shunga bog'liq.
+  const open = !!info && (info.state === 'active' || info.state === 'expired')
+
+  // Har soniya soatni yangilab turamiz (countdown uchun) — faqat ochiq holatda, terminal holatda to'xtaydi.
   useEffect(() => {
+    if (!open) return
     const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [open])
 
-  // Holatni davriy so'rab turamiz (faqat active/expired bo'lganda)
+  // Holatni davriy so'rab turamiz — interval faqat holat o'zgarganda qayta yaratiladi (har poll'da emas).
   useEffect(() => {
-    if (!info) return
-    const open = info.state === 'active' || info.state === 'expired'
-    if (!open) {
-      if (pollRef.current) clearInterval(pollRef.current)
-      return
-    }
-    pollRef.current = setInterval(fetchInfo, 4000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [info, fetchInfo])
+    if (!open) return
+    const id = setInterval(fetchInfo, 4000)
+    return () => clearInterval(id)
+  }, [open, fetchInfo])
 
   if (loading) {
     return (
@@ -150,8 +148,10 @@ export default function Pay() {
   const secs = Math.floor((remainingMs % 60000) / 1000)
   const isActive = info.state === 'active'
   const isConfirmed = info.state === 'confirmed'
-  const isExpired = info.state === 'cancelled'
+  const isCancelled = info.state === 'cancelled'
   const timeUp = remainingMs <= 0
+  // 'expired' (worker hali yopmagan) yoki vaqt tugagan active — "tekshirilmoqda" holati.
+  const isVerifying = info.state === 'expired' || (isActive && timeUp)
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center px-4 py-10">
@@ -168,7 +168,7 @@ export default function Pay() {
               <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto mb-4">
                 <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
               </div>
-            ) : isExpired ? (
+            ) : isCancelled ? (
               <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mx-auto mb-4">
                 <svg width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </div>
@@ -180,9 +180,9 @@ export default function Pay() {
                 </span>
               </div>
             )}
-            <div className={`inline-flex items-center gap-2 text-sm font-semibold ${s.color}`}>
-              {!isConfirmed && !isExpired && <span className={`w-1.5 h-1.5 rounded-full ${s.dot} animate-pulse`} />}
-              {timeUp && isActive ? 'To\'lov tekshirilmoqda...' : s.label}
+            <div className={`inline-flex items-center gap-2 text-sm font-semibold ${isVerifying ? 'text-amber-400' : s.color}`}>
+              {!isConfirmed && !isCancelled && <span className={`w-1.5 h-1.5 rounded-full ${s.dot} animate-pulse`} />}
+              {isVerifying ? 'To\'lov tekshirilmoqda...' : s.label}
             </div>
           </div>
 
@@ -239,13 +239,13 @@ export default function Pay() {
                 </p>
               </>
             )}
-            {timeUp && isActive && (
+            {isVerifying && (
               <p className="text-zinc-400 text-sm text-center">Muddat tugadi, to'lov holati tekshirilmoqda...</p>
             )}
             {isConfirmed && (
               <p className="text-emerald-400/90 text-sm text-center">Rahmat! To'lov muvaffaqiyatli qabul qilindi.</p>
             )}
-            {isExpired && (
+            {isCancelled && (
               <p className="text-zinc-400 text-sm text-center">Ushbu to'lov muddati o'tgan. Yangi to'lov uchun qaytadan urinib ko'ring.</p>
             )}
           </div>

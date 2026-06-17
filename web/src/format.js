@@ -2,10 +2,16 @@
 // Har biri: format* (ko'rsatish uchun) va raw* (serverga yuborish uchun) juftligi.
 
 // Telefon — O'zbekiston: +998 XX XXX XX XX
-export function formatPhone(value) {
+// localPhone: 998 prefiksini olib tashlab, OXIRGI 9 raqamni qaytaradi — bu oldidagi
+// trunk '8' (masalan "8 90 ...") yoki ortiqcha kiritilgan raqamlarni jimgina buzmasdan to'g'ri tashlaydi.
+function localPhone(value) {
   let d = String(value).replace(/\D/g, '')
   if (d.startsWith('998')) d = d.slice(3)
-  d = d.slice(0, 9) // operator (2) + 7 raqam
+  return d.slice(-9) // operator (2) + 7 raqam
+}
+
+export function formatPhone(value) {
+  const d = localPhone(value)
   if (!d) return ''
   const parts = ['+998', d.slice(0, 2)]
   if (d.length > 2) parts.push(d.slice(2, 5))
@@ -15,10 +21,8 @@ export function formatPhone(value) {
 }
 
 export function rawPhone(value) {
-  const d = String(value).replace(/\D/g, '')
-  if (!d) return ''
-  const local = d.startsWith('998') ? d.slice(3) : d
-  return '+998' + local.slice(0, 9)
+  const d = localPhone(value)
+  return d ? '+998' + d : ''
 }
 
 // Karta raqami — 16 raqam, 4 talab guruh: 9860 1234 5678 9012
@@ -40,6 +44,19 @@ export function formatAmount(value) {
 
 export function rawAmount(value) {
   return String(value).replace(/\D/g, '')
+}
+
+// Sana-vaqt — ro'yxatlarda ko'rsatish uchun (uz-UZ): "17-iyn, 14:32"
+export function formatDateTime(str) {
+  if (!str) return ''
+  try {
+    return new Date(str).toLocaleString('uz-UZ', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return str
+  }
 }
 
 // Tasdiqlash kodi — faqat raqam, maksimal 6 ta

@@ -1,22 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api'
+import { formatAmount, formatDateTime } from '../../format'
 
 const PAGE_SIZE = 20
-
-function formatDateTime(str) {
-  if (!str) return ''
-  try {
-    return new Date(str).toLocaleString('uz-UZ', {
-      year: 'numeric', month: 'short', day: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-    })
-  } catch { return str }
-}
-
-function formatAmount(n) {
-  if (n === null || n === undefined) return ''
-  return Number(n).toLocaleString('uz-UZ')
-}
 
 const ACTION_LABEL = {
   confirm: { label: 'To\'lov tushdi', cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
