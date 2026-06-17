@@ -41,6 +41,31 @@ function StateBadge({ state }) {
   )
 }
 
+// Webhook yetkazib berish holati + urinishlar soni (transaction yopilgandan keyin).
+function WebhookChip({ tx }) {
+  // Hali ochiq (active/expired) — webhook yuborilmagan.
+  if (tx.state === 'active' || tx.state === 'expired') {
+    return <span className="text-xs text-zinc-600">webhook: kutilmoqda</span>
+  }
+  const attempts = tx.webhook_attempts || 0
+  if (attempts === 0) {
+    return <span className="text-xs text-zinc-500">webhook: sozlanmagan</span>
+  }
+  const cls = tx.webhook_status
+    ? 'text-emerald-400'
+    : 'text-red-400'
+  return (
+    <span className={`inline-flex items-center gap-1 text-xs ${cls}`}>
+      {tx.webhook_status ? (
+        <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+      ) : (
+        <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      )}
+      webhook {tx.webhook_status ? 'yuborildi' : 'xato'} · {attempts}x
+    </span>
+  )
+}
+
 const FILTERS = [
   { key: 'all', label: 'Hammasi' },
   { key: 'active', label: 'Aktiv' },
@@ -248,7 +273,7 @@ export default function Transactions() {
               />
               <span className="w-28">Summa</span>
               <span className="flex-1">Karta</span>
-              <span className="w-32">Holat</span>
+              <span className="w-36">Holat / Webhook</span>
               <span className="w-40">Sana</span>
               <span className="w-8" />
             </div>
@@ -271,8 +296,9 @@ export default function Transactions() {
                     <p className="text-zinc-300 text-sm font-mono truncate">{formatCard(t.card_number, t.card_last4)}</p>
                     <p className="text-zinc-500 text-xs truncate">{t.card_owner || '—'}</p>
                   </div>
-                  <div className="md:w-32 pl-7 md:pl-0">
+                  <div className="md:w-36 pl-7 md:pl-0 flex flex-col gap-1 items-start">
                     <StateBadge state={t.state} />
+                    <WebhookChip tx={t} />
                   </div>
                   <span className="md:w-40 pl-7 md:pl-0 text-zinc-500 text-xs">{formatDateTime(t.created_at)}</span>
                   <button

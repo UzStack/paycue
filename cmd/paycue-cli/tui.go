@@ -240,21 +240,32 @@ func tuiProfiles(a *app) {
 }
 
 func tuiWebhook(a *app) {
-	idx, ok := selectMenu("Webhook", []string{"Joriy webhookni ko'rish", "Webhook sozlash", "Orqaga"})
-	if !ok {
-		return
-	}
-	switch idx {
-	case 0:
-		out, err := a.c.do("GET", "/api/webhook", nil)
-		show(out, err)
-	case 1:
-		url, ok := askRequired("Webhook URL")
+	for {
+		idx, ok := selectMenu("Webhook", []string{"Joriy webhookni ko'rish", "Webhook sozlash", "Loglarni ko'rish", "Orqaga"})
 		if !ok {
 			return
 		}
-		out, err := a.c.do("POST", "/api/webhook", map[string]any{"url": url})
-		show(out, err)
+		switch idx {
+		case 0:
+			out, err := a.c.do("GET", "/api/webhook", nil)
+			show(out, err)
+		case 1:
+			url, ok := askRequired("Webhook URL")
+			if !ok {
+				break
+			}
+			out, err := a.c.do("POST", "/api/webhook", map[string]any{"url": url})
+			show(out, err)
+		case 2:
+			out, err := a.c.do("GET", "/api/webhook/logs", nil)
+			if err != nil {
+				show(out, err)
+				break
+			}
+			printWebhookLogs(out["data"])
+		case 3:
+			return
+		}
 	}
 }
 

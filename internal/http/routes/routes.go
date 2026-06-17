@@ -26,6 +26,7 @@ func InitRoutes(mux *http.ServeMux, db *sql.DB, log *zap.Logger, cfg *config.Con
 
 	mux.HandleFunc("GET /api/webhook", auth(h.GetWebhook))
 	mux.HandleFunc("POST /api/webhook", auth(h.SetWebhook))
+	mux.HandleFunc("GET /api/webhook/logs", auth(h.WebhookLogs))
 
 	mux.HandleFunc("POST /api/telegram/send-code", auth(h.TelegramSendCode))
 	mux.HandleFunc("POST /api/telegram/verify", auth(h.TelegramVerify))

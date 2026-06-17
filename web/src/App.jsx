@@ -10,6 +10,7 @@ import Cards from './pages/dashboard/Cards'
 import Webhook from './pages/dashboard/Webhook'
 import CreateTransaction from './pages/dashboard/CreateTransaction'
 import Transactions from './pages/dashboard/Transactions'
+import WebhookLogs from './pages/dashboard/WebhookLogs'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="telegram" element={<TelegramAccounts />} />
           <Route path="cards" element={<Cards />} />
           <Route path="webhook" element={<Webhook />} />
+          <Route path="webhook-logs" element={<WebhookLogs />} />
           <Route path="transaction" element={<CreateTransaction />} />
           <Route path="transactions" element={<Transactions />} />
         </Route>

@@ -106,6 +106,7 @@ endpointlarni chaqiradi, ya'ni CLI'dagi har bir buyruq quyidagi so'rovga teng.
 | `POST` | `/api/login` | ✗ | `login` |
 | `GET`  | `/api/webhook` | ✓ | `webhook` (urlsiz) |
 | `POST` | `/api/webhook` | ✓ | `webhook --url` |
+| `GET`  | `/api/webhook/logs` | ✓ | `webhook logs` |
 | `POST` | `/api/telegram/send-code` | ✓ | `telegram connect` (1-qadam) |
 | `POST` | `/api/telegram/verify` | ✓ | `telegram connect` (2-qadam) |
 | `GET`  | `/api/telegram` | ✓ | `telegram list` |
@@ -306,6 +307,11 @@ Kartaga to'lov tushganda yoki transaction bekor qilinganda dastur sizning URL'in
 `action`: `confirm` (to'lov tushdi) yoki `cancel` (muddati o'tdi). Header'da
 `X-API-Key: <secret>` bo'ladi. Callback URL `{ "ok": true }` va `200` qaytarishi kerak,
 aks holda dastur `3 marta` qayta urinadi.
+
+Har bir yetkazib berish natijasi (muvaffaqiyat, urinishlar soni, HTTP kodi, xato)
+saqlanadi. `GET /api/webhook/logs` orqali ko'rinadi va dashboarddagi **Webhook loglar**
+sahifasida chiqadi; transaction ro'yxatida ham har bir to'lov uchun webhook holati
+(`webhook_status`) va urinishlar soni (`webhook_attempts`) ko'rsatiladi.
 
 ## CLI
 

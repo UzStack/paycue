@@ -52,12 +52,29 @@ func InitTables(db *sql.DB) {
 			amount INTEGER NOT NULL,
 			status BOOLEAN DEFAULT 1,
 			webhook_status BOOLEAN DEFAULT 0,
+			webhook_attempts INTEGER DEFAULT 0,
 			action TEXT DEFAULT '',
 			transaction_id TEXT NOT NULL UNIQUE,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 		CREATE INDEX IF NOT EXISTS card_amount_created_index ON transactions(card_id, amount, created_at);
 		CREATE UNIQUE INDEX IF NOT EXISTS transaction_id_index ON transactions(transaction_id);
+
+		CREATE TABLE IF NOT EXISTS webhook_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			transaction_id TEXT DEFAULT '',
+			card_id INTEGER DEFAULT 0,
+			action TEXT DEFAULT '',
+			url TEXT DEFAULT '',
+			amount INTEGER DEFAULT 0,
+			attempts INTEGER DEFAULT 0,
+			success BOOLEAN DEFAULT 0,
+			status_code INTEGER DEFAULT 0,
+			error TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE INDEX IF NOT EXISTS webhook_logs_user_index ON webhook_logs(user_id, created_at);
 	`)
 	if err != nil {
 		panic(err)
@@ -68,6 +85,7 @@ func InitTables(db *sql.DB) {
 	db.Exec("ALTER TABLE cards ADD COLUMN number TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE cards ADD COLUMN owner_name TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE transactions ADD COLUMN action TEXT DEFAULT ''")
+	db.Exec("ALTER TABLE transactions ADD COLUMN webhook_attempts INTEGER DEFAULT 0")
 }
 
 // ---- Users ----
@@ -336,11 +354,43 @@ func GetOldTransactions(db *sql.DB, timeoutMins int) ([]domain.WebhookTask, erro
 	return list, nil
 }
 
-// ConfirmTransaction transactionni yopadi: status=0 qiladi, action (confirm|cancel)
-// va webhook yetkazilgani holatini saqlaydi.
-func ConfirmTransaction(db *sql.DB, transactionID, action string, webhookStatus bool) error {
-	_, err := db.Exec("UPDATE transactions SET status=0, action=?, webhook_status=? WHERE transaction_id=?", action, webhookStatus, transactionID)
+// ConfirmTransaction transactionni yopadi: status=0 qiladi, action (confirm|cancel),
+// webhook yetkazilgani holatini va urinishlar sonini saqlaydi.
+func ConfirmTransaction(db *sql.DB, transactionID, action string, webhookStatus bool, attempts int) error {
+	_, err := db.Exec("UPDATE transactions SET status=0, action=?, webhook_status=?, webhook_attempts=? WHERE transaction_id=?",
+		action, webhookStatus, attempts, transactionID)
 	return err
+}
+
+// CreateWebhookLog bitta webhook yetkazib berish natijasini yozadi.
+func CreateWebhookLog(db *sql.DB, l domain.WebhookLog) error {
+	_, err := db.Exec(`INSERT INTO webhook_logs
+		(user_id, transaction_id, card_id, action, url, amount, attempts, success, status_code, error)
+		VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		l.UserID, l.TransactionID, l.CardID, l.Action, l.URL, l.Amount, l.Attempts, l.Success, l.StatusCode, l.Error)
+	return err
+}
+
+// ListWebhookLogsByUser foydalanuvchining webhook loglarini (oxirgilari birinchi)
+// qaytaradi. Cheksiz o'smasligi uchun limit bilan cheklangan.
+func ListWebhookLogsByUser(db *sql.DB, userID int64, limit int) ([]domain.WebhookLog, error) {
+	rows, err := db.Query(`SELECT id, user_id, COALESCE(transaction_id,''), card_id, COALESCE(action,''),
+		COALESCE(url,''), amount, attempts, success, status_code, COALESCE(error,''), created_at
+		FROM webhook_logs WHERE user_id=? ORDER BY id DESC LIMIT ?`, userID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []domain.WebhookLog
+	for rows.Next() {
+		var l domain.WebhookLog
+		if err := rows.Scan(&l.ID, &l.UserID, &l.TransactionID, &l.CardID, &l.Action,
+			&l.URL, &l.Amount, &l.Attempts, &l.Success, &l.StatusCode, &l.Error, &l.CreatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, l)
+	}
+	return list, nil
 }
 
 func DeleteTransaction(db *sql.DB, transactionID string) error {
@@ -368,7 +418,7 @@ func TransactionOwner(db *sql.DB, id int64) (int64, error) {
 // hisoblangan holat (state) bilan qaytaradi. timeoutMins active/expired farqi uchun.
 func ListTransactionsByUser(db *sql.DB, userID int64, timeoutMins int) ([]domain.Transaction, error) {
 	rows, err := db.Query(`
-		SELECT tr.id, tr.card_id, tr.amount, tr.status, tr.webhook_status,
+		SELECT tr.id, tr.card_id, tr.amount, tr.status, tr.webhook_status, COALESCE(tr.webhook_attempts,0),
 		       COALESCE(tr.action,''), tr.transaction_id, tr.created_at,
 		       COALESCE(c.number,''), c.last4, COALESCE(c.owner_name,'')
 		FROM transactions tr
@@ -384,7 +434,7 @@ func ListTransactionsByUser(db *sql.DB, userID int64, timeoutMins int) ([]domain
 	var list []domain.Transaction
 	for rows.Next() {
 		var tr domain.Transaction
-		if err := rows.Scan(&tr.ID, &tr.CardID, &tr.Amount, &tr.Status, &tr.WebhookStatus,
+		if err := rows.Scan(&tr.ID, &tr.CardID, &tr.Amount, &tr.Status, &tr.WebhookStatus, &tr.WebhookAttempts,
 			&tr.Action, &tr.TransactionID, &tr.CreatedAt,
 			&tr.CardNumber, &tr.CardLast4, &tr.CardOwner); err != nil {
 			return nil, err

@@ -228,6 +228,7 @@ Buyruqlar:
   login --login EMAIL|PHONE --password PW [--profile NAME]
                                   Parol bilan kirish (tokenni profilga saqlaydi)
   webhook [--url URL]             URL bo'lsa sozlaydi, bo'lmasa joriysini ko'rsatadi
+  webhook logs                    Webhook yetkazib berish loglari (natija/urinish)
   telegram connect [--phone +998..]  Account ulash (interaktiv: kod va 2FA ni so'raydi)
   telegram send-code --phone +998..  (skriptbop) kod yuboradi, account_id qaytaradi
   telegram verify --account ID --code 12345 [--password 2FA]  (skriptbop) tasdiqlash
@@ -395,6 +396,15 @@ func (a *app) saveTokenFromResponse(out map[string]any, profName string) {
 }
 
 func cmdWebhook(c *client, args []string) error {
+	// `webhook logs` — yetkazib berish loglarini ko'rsatadi.
+	if len(args) > 0 && args[0] == "logs" {
+		out, err := c.do("GET", "/api/webhook/logs", nil)
+		if err != nil {
+			return err
+		}
+		printWebhookLogs(out["data"])
+		return nil
+	}
 	fs := flag.NewFlagSet("webhook", flag.ExitOnError)
 	url := fs.String("url", "", "webhook url (bo'sh bo'lsa joriysini ko'rsatadi)")
 	fs.Parse(args)
@@ -574,7 +584,7 @@ func printTransactions(data any) {
 		fmt.Println("Tranzaksiya yo'q.")
 		return
 	}
-	fmt.Printf("%-5s %-12s %-22s %-16s %-16s\n", "ID", "SUMMA", "KARTA", "EGASI", "HOLAT")
+	fmt.Printf("%-5s %-12s %-20s %-16s %-16s %-14s\n", "ID", "SUMMA", "KARTA", "EGASI", "HOLAT", "WEBHOOK")
 	for _, it := range list {
 		m, ok := it.(map[string]any)
 		if !ok {
@@ -590,7 +600,57 @@ func printTransactions(data any) {
 		}
 		owner, _ := m["card_owner"].(string)
 		state, _ := m["state"].(string)
-		fmt.Printf("%-5s %-12s %-22s %-16s %-16s\n", id, amount, card, owner, transactionStateLabel(state))
+		fmt.Printf("%-5s %-12s %-20s %-16s %-16s %-14s\n",
+			id, amount, card, owner, transactionStateLabel(state), webhookSummary(m, state))
+	}
+}
+
+// webhookSummary transaction qatori uchun webhook holatini qisqa ko'rsatadi.
+func webhookSummary(m map[string]any, state string) string {
+	if state == "active" || state == "expired" {
+		return "kutilmoqda"
+	}
+	attempts := 0
+	if v, ok := m["webhook_attempts"].(float64); ok {
+		attempts = int(v)
+	}
+	if attempts == 0 {
+		return "sozlanmagan"
+	}
+	if s, _ := m["webhook_status"].(bool); s {
+		return fmt.Sprintf("yuborildi %dx", attempts)
+	}
+	return fmt.Sprintf("xato %dx", attempts)
+}
+
+// printWebhookLogs webhook loglarini jadval ko'rinishida chiqaradi.
+func printWebhookLogs(data any) {
+	list, ok := data.([]any)
+	if !ok || len(list) == 0 {
+		fmt.Println("Webhook log yo'q.")
+		return
+	}
+	fmt.Printf("%-10s %-12s %-10s %-5s %-7s %-38s %-20s\n", "NATIJA", "SUMMA", "HODISA", "KOD", "URINISH", "TRANSACTION", "SANA")
+	for _, it := range list {
+		m, ok := it.(map[string]any)
+		if !ok {
+			continue
+		}
+		result := "Xato"
+		if s, _ := m["success"].(bool); s {
+			result = "Yuborildi"
+		}
+		amount := numStr(m["amount"])
+		action, _ := m["action"].(string)
+		code := numStr(m["status_code"])
+		attempts := numStr(m["attempts"])
+		transID, _ := m["transaction_id"].(string)
+		created, _ := m["created_at"].(string)
+		if len(created) > 19 {
+			created = created[:19]
+		}
+		fmt.Printf("%-10s %-12s %-10s %-5s %-7s %-38s %-20s\n",
+			result, amount, action, code, attempts, transID, created)
 	}
 }
 

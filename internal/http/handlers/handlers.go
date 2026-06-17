@@ -184,6 +184,18 @@ func (h *Handler) SetWebhook(w http.ResponseWriter, r *http.Request) {
 	ok(w, map[string]any{"url": in.URL, "secret": secret})
 }
 
+// WebhookLogs foydalanuvchining webhook yetkazib berish loglarini qaytaradi.
+func (h *Handler) WebhookLogs(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFrom(r)
+	const limit = 1000 // cheksiz o'smasligi uchun oxirgi 1000 ta
+	list, err := repository.ListWebhookLogsByUser(h.DB, user.ID, limit)
+	if err != nil {
+		fail(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	ok(w, list)
+}
+
 // ---- Telegram ----
 
 func (h *Handler) TelegramSendCode(w http.ResponseWriter, r *http.Request) {

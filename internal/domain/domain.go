@@ -44,15 +44,32 @@ type Transaction struct {
 	ID            int64     `json:"id"`
 	CardID        int64     `json:"card_id"`
 	Amount        int64     `json:"amount"`
-	Status        bool      `json:"status"`           // true=active(ochiq), false=yopilgan
-	WebhookStatus bool      `json:"webhook_status"`   // webhook yetkazildimi
-	Action        string    `json:"action,omitempty"` // yopilganda: confirm | cancel
-	TransactionID string    `json:"transaction_id"`
-	CreatedAt     time.Time `json:"created_at"`
+	Status          bool      `json:"status"`           // true=active(ochiq), false=yopilgan
+	WebhookStatus   bool      `json:"webhook_status"`   // webhook yetkazildimi
+	WebhookAttempts int       `json:"webhook_attempts"` // nechi marta urinilgan
+	Action          string    `json:"action,omitempty"` // yopilganda: confirm | cancel
+	TransactionID   string    `json:"transaction_id"`
+	CreatedAt       time.Time `json:"created_at"`
 
 	// Ro'yxatda (ListTransactionsByUser) to'ldiriladi:
 	State      string `json:"state,omitempty"`       // active | confirmed | cancelled | expired
 	CardNumber string `json:"card_number,omitempty"` // to'liq carta raqami
 	CardLast4  string `json:"card_last4,omitempty"`
 	CardOwner  string `json:"card_owner,omitempty"`
+}
+
+// WebhookLog bitta webhook yetkazib berish urinishini (natijasini) yozib boradi.
+type WebhookLog struct {
+	ID            int64     `json:"id"`
+	UserID        int64     `json:"user_id"`
+	TransactionID string    `json:"transaction_id"`
+	CardID        int64     `json:"card_id"`
+	Action        string    `json:"action"` // confirm | cancel
+	URL           string    `json:"url"`
+	Amount        int64     `json:"amount"`
+	Attempts      int       `json:"attempts"`     // jami urinishlar (1..3)
+	Success       bool      `json:"success"`      // oxir-oqibat yetkazildimi
+	StatusCode    int       `json:"status_code"`  // oxirgi HTTP javob kodi
+	Error         string    `json:"error,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
 }
