@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { getToken } from '../api'
 
 function CodeBlock() {
   return (
@@ -143,26 +144,43 @@ const FEATURES = [
 ]
 
 export default function Landing() {
+  const loggedIn = !!getToken()
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-zinc-800/60 bg-zinc-950/90 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
           <span className="text-sky-400 font-bold text-lg tracking-tight">Paycue</span>
-          <div className="flex items-center gap-3">
+          {loggedIn ? (
             <Link
-              to="/login"
-              className="text-sm text-zinc-400 hover:text-zinc-100 px-4 py-2 rounded-md border border-zinc-700 hover:border-zinc-500 transition-colors"
+              to="/dashboard"
+              title="Dashboard"
+              aria-label="Dashboard"
+              className="flex items-center gap-2 text-sm text-zinc-200 hover:text-white pl-3 pr-2 py-1.5 rounded-full border border-zinc-700 hover:border-sky-500/60 hover:bg-zinc-800/60 transition-colors"
             >
-              Kirish
+              <span className="hidden sm:inline">Dashboard</span>
+              <span className="w-7 h-7 rounded-full bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </span>
             </Link>
-            <Link
-              to="/register"
-              className="text-sm text-zinc-100 bg-sky-500 hover:bg-sky-400 px-4 py-2 rounded-md font-medium transition-colors"
-            >
-              Boshlash
-            </Link>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link
+                to="/login"
+                className="text-sm text-zinc-400 hover:text-zinc-100 px-4 py-2 rounded-md border border-zinc-700 hover:border-zinc-500 transition-colors"
+              >
+                Kirish
+              </Link>
+              <Link
+                to="/register"
+                className="text-sm text-zinc-100 bg-sky-500 hover:bg-sky-400 px-4 py-2 rounded-md font-medium transition-colors"
+              >
+                Boshlash
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
