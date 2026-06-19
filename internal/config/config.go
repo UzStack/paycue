@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
@@ -17,6 +18,10 @@ type Config struct {
 	Debug       bool
 	CORSOrigin  string
 	WebDir      string
+
+	// Noyob summa farqi yo'nalishi: false=yuqoriga o'sadi (1000.00, 1000.01, ...),
+	// true=pastga kamayadi (1000.00, 999.99, ...). Default: yuqoriga.
+	AmountCountDown bool
 
 	// Telemetriya (anonim foydalanish statistikasi)
 	StatsURL       string // hisobotlar yuboriladigan kollektor (default https://paycue.uz)
@@ -68,6 +73,8 @@ func NewConfig() (*Config, error) {
 		Debug:       os.Getenv("DEBUG") == "true",
 		CORSOrigin:  GetenvValue("CORS_ORIGIN", "*"),
 		WebDir:      GetenvValue("WEB_DIR", ""),
+
+		AmountCountDown: strings.ToLower(GetenvValue("AMOUNT_DIRECTION", "up")) == "down",
 
 		StatsURL:       GetenvValue("STATS_URL", "https://paycue.uz"),
 		StatsReport:    os.Getenv("STATS_REPORT") != "false",  // default: yoqilgan (yubor)

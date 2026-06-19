@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api'
-import { formatAmount, formatDateTime } from '../../format'
+import { formatMoney, formatDateTime } from '../../format'
 
 const PAGE_SIZE = 20
 
@@ -175,7 +175,7 @@ export default function WebhookLogs() {
                     )}
                   </div>
                   <span className="md:w-28 text-zinc-100 text-sm font-semibold font-mono">
-                    {formatAmount(l.amount)} <span className="text-zinc-500 font-normal text-xs">UZS</span>
+                    {formatMoney(l.amount)} <span className="text-zinc-500 font-normal text-xs">UZS</span>
                   </span>
                   <div className="md:w-32"><ActionBadge action={l.action} /></div>
                   <span className="flex-1 min-w-0 text-zinc-400 text-xs font-mono truncate" title={l.transaction_id}>

@@ -12,14 +12,27 @@ func TestParseTopUp(t *testing.T) {
 	if res == nil {
 		t.Fatal("natija nil, top_up aniqlanmadi")
 	}
-	if res.AmountInt != 1010 {
-		t.Errorf("amount: kutilgan 1010, olingan %d", res.AmountInt)
+	// Summa endi tiyinda: 1.010,00 so'm = 101000 tiyin.
+	if res.AmountInt != 101000 {
+		t.Errorf("amount: kutilgan 101000, olingan %d", res.AmountInt)
 	}
 	if res.Last4 != "7159" {
 		t.Errorf("last4: kutilgan 7159, olingan %q", res.Last4)
 	}
 	if res.Currency != "UZS" {
 		t.Errorf("currency: kutilgan UZS, olingan %q", res.Currency)
+	}
+}
+
+func TestParseTopUp_Tiyin(t *testing.T) {
+	// Noyob summa tiyin qadamida: 1.000,01 so'm = 100001 tiyin.
+	msg := "To'ldirish\n➕ 1.000,01 UZS\n💳 HUMOCARD *7159"
+	res := ParseTopUp(msg, zap.NewNop())
+	if res == nil {
+		t.Fatal("natija nil")
+	}
+	if res.AmountInt != 100001 {
+		t.Errorf("amount: kutilgan 100001, olingan %d", res.AmountInt)
 	}
 }
 

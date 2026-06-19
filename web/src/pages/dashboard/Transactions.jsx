@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../../api'
-import { formatAmount, formatDateTime } from '../../format'
+import { formatMoney, formatDateTime } from '../../format'
 
 const PAGE_SIZE = 15
 
@@ -305,7 +305,7 @@ export default function Transactions() {
                       className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 accent-sky-500 cursor-pointer shrink-0"
                     />
                     <span className="md:w-28 text-zinc-100 text-sm font-semibold font-mono">
-                      {formatAmount(t.amount)} <span className="text-zinc-500 font-normal text-xs">UZS</span>
+                      {formatMoney(t.amount)} <span className="text-zinc-500 font-normal text-xs">UZS</span>
                     </span>
                   </div>
                   <div className="flex-1 min-w-0 pl-7 md:pl-0">

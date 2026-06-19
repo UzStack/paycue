@@ -63,7 +63,7 @@ function CodeBlock() {
         <span className="text-zinc-500">,</span>{'\n'}
         {'  '}<span className="text-sky-400">"amount"</span>
         <span className="text-zinc-500">: </span>
-        <span className="text-emerald-400">20001</span>
+        <span className="text-emerald-400">20000.01</span>
         <span className="text-zinc-500">,</span>{'\n'}
         {'  '}<span className="text-sky-400">"card_id"</span>
         <span className="text-zinc-500">: </span>

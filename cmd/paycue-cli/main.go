@@ -591,7 +591,7 @@ func printTransactions(data any) {
 			continue
 		}
 		id := numStr(m["id"])
-		amount := numStr(m["amount"])
+		amount := amountStr(m["amount"])
 		card, _ := m["card_number"].(string)
 		if card == "" {
 			if l4, ok := m["card_last4"].(string); ok {
@@ -640,7 +640,7 @@ func printWebhookLogs(data any) {
 		if s, _ := m["success"].(bool); s {
 			result = "Yuborildi"
 		}
-		amount := numStr(m["amount"])
+		amount := amountStr(m["amount"])
 		action, _ := m["action"].(string)
 		code := numStr(m["status_code"])
 		attempts := numStr(m["attempts"])
@@ -664,4 +664,13 @@ func numStr(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// amountStr summani (so'm, o'nlik tiyin bilan) ko'rsatadi: 1000 -> "1000",
+// 1000.01 -> "1000.01". Ortiqcha nollar tashlanadi.
+func amountStr(v any) string {
+	if n, ok := v.(float64); ok {
+		return strconv.FormatFloat(n, 'f', -1, 64)
+	}
+	return numStr(v)
 }

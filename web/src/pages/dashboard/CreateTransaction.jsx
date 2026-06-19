@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
-import { formatAmount as maskAmount, rawAmount } from '../../format'
-
-function formatAmount(n) {
-  if (!n) return ''
-  return Number(n).toLocaleString('uz-UZ')
-}
+import { formatAmount as maskAmount, rawAmount, formatMoney } from '../../format'
 
 export default function CreateTransaction() {
   const [cards, setCards] = useState([])
@@ -154,7 +149,7 @@ export default function CreateTransaction() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-zinc-500">Summa</span>
                 <span className="text-zinc-100 font-semibold font-mono">
-                  {formatAmount(result.amount)} UZS
+                  {formatMoney(result.amount)} UZS
                 </span>
               </div>
 

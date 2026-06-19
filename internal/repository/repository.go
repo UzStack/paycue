@@ -107,6 +107,16 @@ func InitTables(db *sql.DB) {
 	db.Exec("ALTER TABLE cards ADD COLUMN owner_name TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE transactions ADD COLUMN action TEXT DEFAULT ''")
 	db.Exec("ALTER TABLE transactions ADD COLUMN webhook_attempts INTEGER DEFAULT 0")
+
+	// Summalar endi tiyinda saqlanadi (1 so'm = 100 tiyin). Eski yozuvlar so'mda —
+	// bir martalik migratsiya bilan ×100 qilamiz (meta kaliti takrorlanishni oldini oladi).
+	var migrated string
+	db.QueryRow("SELECT value FROM meta WHERE key='amount_in_tiyin'").Scan(&migrated)
+	if migrated != "1" {
+		db.Exec("UPDATE transactions SET amount = amount * 100")
+		db.Exec("UPDATE webhook_logs SET amount = amount * 100")
+		db.Exec("INSERT OR REPLACE INTO meta(key, value) VALUES('amount_in_tiyin', '1')")
+	}
 }
 
 // ---- Users ----

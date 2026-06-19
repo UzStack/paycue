@@ -31,7 +31,7 @@ func sendUserWebhook(db *sql.DB, log *zap.Logger, task domain.WebhookTask) (bool
 	}
 	res := WebhookRequest(url, secret, map[string]any{
 		"action":         task.Action,
-		"amount":         task.Amount,
+		"amount":         domain.Tiyin(task.Amount), // so'm (o'nlik) bo'lib JSON'ga chiqadi
 		"card_id":        task.CardID,
 		"transaction_id": task.TransID,
 	}, log)
@@ -42,7 +42,7 @@ func sendUserWebhook(db *sql.DB, log *zap.Logger, task domain.WebhookTask) (bool
 		CardID:        task.CardID,
 		Action:        task.Action,
 		URL:           url,
-		Amount:        task.Amount,
+		Amount:        domain.Tiyin(task.Amount),
 		Attempts:      res.Attempts,
 		Success:       res.Success,
 		StatusCode:    res.StatusCode,

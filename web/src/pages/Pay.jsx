@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api'
-
-function formatAmount(n) {
-  if (n === null || n === undefined) return ''
-  return Number(n).toLocaleString('uz-UZ')
-}
+import { formatMoney } from '../format'
 
 // Karta raqamini 4 talab guruhlaydi (to'lovchi o'qishi uchun).
 function formatCard(num, last4) {
@@ -190,8 +186,11 @@ export default function Pay() {
           <div className="px-6 py-6 text-center">
             <p className="text-zinc-500 text-xs uppercase tracking-wide mb-2">To'lov summasi</p>
             <div className="flex items-center justify-center gap-3">
-              <span className="text-4xl font-bold font-mono text-zinc-50">{formatAmount(info.amount)}</span>
+              <span className="text-4xl font-bold font-mono text-zinc-50">{formatMoney(info.amount)}</span>
               <span className="text-zinc-500 text-lg">UZS</span>
+            </div>
+            <div className="mt-3 flex justify-center">
+              <CopyButton value={info.amount} label="To'lov summasini nusxalash" />
             </div>
             {isActive && (
               <div className="mt-3 inline-flex items-start gap-1.5 text-xs text-amber-400/90 bg-amber-500/5 border border-amber-500/15 rounded-md px-3 py-1.5 text-left">

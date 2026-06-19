@@ -1,6 +1,34 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
+
+// Tiyin — pul miqdori ichkarida tiyinda saqlanadi (1 so'm = 100 tiyin).
+// Bu noyob summa farqini so'm o'rniga tiyinda berish imkonini beradi
+// (masalan 1000.00, 1000.01 ... 1000.99, 1001.00). JSON'ga so'm (o'nlik son)
+// bo'lib chiqadi va DB'dan butun son (tiyin) sifatida o'qiladi.
+type Tiyin int64
+
+// MarshalJSON tiyinni so'mga (o'nlik son) aylantirib chiqaradi: 100001 -> 1000.01.
+func (t Tiyin) MarshalJSON() ([]byte, error) {
+	return []byte(strconv.FormatFloat(float64(t)/100, 'f', -1, 64)), nil
+}
+
+// Scan DB'dagi butun son (tiyin) qiymatini o'qiydi.
+func (t *Tiyin) Scan(v any) error {
+	switch n := v.(type) {
+	case int64:
+		*t = Tiyin(n)
+	case nil:
+		*t = 0
+	default:
+		return fmt.Errorf("Tiyin: qo'llab-quvvatlanmaydigan tip %T", v)
+	}
+	return nil
+}
 
 type Response struct {
 	Status bool `json:"status"`
@@ -43,7 +71,7 @@ type Card struct {
 type Transaction struct {
 	ID            int64     `json:"id"`
 	CardID        int64     `json:"card_id"`
-	Amount        int64     `json:"amount"`
+	Amount        Tiyin     `json:"amount"` // tiyinda saqlanadi, JSON'da so'm (o'nlik)
 	Status          bool      `json:"status"`           // true=active(ochiq), false=yopilgan
 	WebhookStatus   bool      `json:"webhook_status"`   // webhook yetkazildimi
 	WebhookAttempts int       `json:"webhook_attempts"` // nechi marta urinilgan
@@ -98,7 +126,7 @@ type WebhookLog struct {
 	CardID        int64     `json:"card_id"`
 	Action        string    `json:"action"` // confirm | cancel
 	URL           string    `json:"url"`
-	Amount        int64     `json:"amount"`
+	Amount        Tiyin     `json:"amount"` // tiyinda saqlanadi, JSON'da so'm (o'nlik)
 	Attempts      int       `json:"attempts"`     // jami urinishlar (1..3)
 	Success       bool      `json:"success"`      // oxir-oqibat yetkazildimi
 	StatusCode    int       `json:"status_code"`  // oxirgi HTTP javob kodi

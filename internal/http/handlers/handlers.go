@@ -455,14 +455,15 @@ func (h *Handler) TransactionCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	amount, transID, err := usecase.CreateTransactionForCard(h.DB, cardID, in.Amount, h.Cfg.TimeoutMins)
+	amount, transID, err := usecase.CreateTransactionForCard(h.DB, cardID, in.Amount, h.Cfg.TimeoutMins, h.Cfg.AmountCountDown)
 	if err != nil {
 		fail(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Qaysi cartada yaratilgani (raqam/egasi) va to'lov havolasi javobda qaytadi.
+	// amount tiyinda — so'm (o'nlik) bo'lib chiqishi uchun Tiyin'ga o'raymiz.
 	resp := map[string]any{
-		"amount":         amount,
+		"amount":         domain.Tiyin(amount),
 		"card_id":        cardID,
 		"transaction_id": transID,
 		"pay_url":        baseURL(r) + "/pay/" + transID,

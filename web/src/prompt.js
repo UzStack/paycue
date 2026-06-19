@@ -38,13 +38,13 @@ ${webhookLine}
 ## 1) Transaction yaratish
 POST ${base}/api/transactions
 Header: Authorization: Bearer <token>
-Body: { "amount": <so'ralayotgan summa, butun son>, "card_id": <ixtiyoriy> }
-Javob (data): { "amount": <to'lanadigan NOYOB summa>, "card_id", "transaction_id", "pay_url" }
-MUHIM: mijozdan aynan javobdagi "amount" ni so'ra — summa noyob, to'lov aynan shu orqali aniqlanadi.
+Body: { "amount": <so'ralayotgan summa, so'mda butun son>, "card_id": <ixtiyoriy> }
+Javob (data): { "amount": <to'lanadigan NOYOB summa, so'mda o'nlik — masalan 1000.01>, "card_id", "transaction_id", "pay_url" }
+MUHIM: mijozdan aynan javobdagi "amount" ni so'ra (tiyingacha aniq) — summa noyob, to'lov aynan shu orqali aniqlanadi.
 
 ## 2) Webhook (men qabul qilaman)
 Paycue to'lov tushganda yoki muddati o'tganda mening URL'imga POST yuboradi:
-  body: { "action": "confirm" | "cancel", "amount": int, "card_id": int, "transaction_id": string }
+  body: { "action": "confirm" | "cancel", "amount": <so'mda o'nlik, masalan 1000.01>, "card_id": int, "transaction_id": string }
   header: X-API-Key: <secret>
 Mening webhook handlerim shularni qilsin:
 - Kelgan X-API-Key ni yuqoridagi secret bilan solishtirib tekshirsin (mos kelmasa 403 qaytarib rad etsin — soxta so'rovlardan himoya).

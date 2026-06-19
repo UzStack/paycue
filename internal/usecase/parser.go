@@ -12,20 +12,37 @@ import (
 type TopUpResult struct {
 	Type         string // "top_up"
 	AmountRaw    string // "3.300.000,00"
-	AmountInt    int64  // 3300000 (butun pul birligi sifatida)
+	AmountInt    int64  // 330000000 (tiyinda: so'm*100 + tiyin)
 	Last4        string // "7159" — cartaning oxirgi 4 raqami
 	Currency     string // "UZS"
 	AmountPretty string
 }
 
+// toNumber summani tiyinda qaytaradi (1 so'm = 100 tiyin), kasr (tiyin) qismni
+// saqlab: "3 300 000,00" -> 330000000, "1.000,01" -> 100001.
 func toNumber(amount string, log *zap.Logger) (int64, bool) {
 	// Minglik ajratuvchilar (nuqta yoki bo'shliq) olib tashlanadi,
-	// vergul o'nlik nuqtaga aylantiriladi: "3 300 000,00" / "1.010,00" -> butun son.
+	// vergul o'nlik nuqtaga aylantiriladi: "3 300 000,00" -> "3300000.00".
 	normalized := strings.NewReplacer(".", "", " ", "", ",", ".").Replace(amount)
-	if res, err := strconv.ParseFloat(normalized, 64); err == nil {
-		return int64(res), true
+	whole, frac, _ := strings.Cut(normalized, ".")
+	som, err := strconv.ParseInt(whole, 10, 64)
+	if err != nil {
+		return 0, false
 	}
-	return 0, false
+	// Kasr qismni aniq 2 raqamga keltiramiz (tiyin): "" -> 00, "5" -> 50, "123" -> 12.
+	switch {
+	case len(frac) == 0:
+		frac = "00"
+	case len(frac) == 1:
+		frac += "0"
+	case len(frac) > 2:
+		frac = frac[:2]
+	}
+	tiyin, err := strconv.ParseInt(frac, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return som*100 + tiyin, true
 }
 
 var (

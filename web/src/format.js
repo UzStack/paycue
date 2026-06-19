@@ -46,6 +46,14 @@ export function rawAmount(value) {
   return String(value).replace(/\D/g, '')
 }
 
+// Pul miqdorini ko'rsatish — server tiyin bilan so'm qaytaradi (masalan 1000.01).
+// Doimo 2 xona o'nlik bilan: "1 000,01". Noyob to'lov summasi aniq ko'rinishi uchun.
+export function formatMoney(value) {
+  const n = Number(value)
+  if (!isFinite(n)) return ''
+  return n.toLocaleString('uz-UZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 // Sana-vaqt — ro'yxatlarda ko'rsatish uchun (uz-UZ): "17-iyn, 14:32"
 export function formatDateTime(str) {
   if (!str) return ''
